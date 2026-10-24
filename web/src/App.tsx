@@ -139,13 +139,16 @@ export default function App() {
       <BrowserRouter>
         <AIHelpProvider>
           <Routes>
-            <Route
-              path="/login"
-              element={routes.find((r) => r.path === '/login')?.element}
-            />
+            {/* Public standalone auth pages (login + self-registration, 2026-10-25):
+                rendered outside AppLayout/RequireAuth so guests can reach them. */}
+            {routes
+              .filter((r) => r.auth === false)
+              .map((route) => (
+                <Route key={route.path} path={route.path} element={route.element} />
+              ))}
             <Route element={<AppLayout />}>
               {routes
-                .filter((r) => r.auth !== false && r.path !== '/login')
+                .filter((r) => r.auth !== false)
                 .map((route) => (
                   <Route
                     key={route.path}

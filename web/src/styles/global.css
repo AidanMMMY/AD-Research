@@ -20,6 +20,7 @@
 @import "./global/pages-list-cleanup.css";
 @import "./global/pages-ai-admin-cleanup.css";
 @import "./global/login.css";
+@import "./global/register.css";
 @import "./global/auth.css";
 @import "./global/learning.css";
 @import "./global/mobile.css";

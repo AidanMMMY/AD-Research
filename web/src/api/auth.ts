@@ -25,6 +25,33 @@ export interface RefreshResponse {
   refresh_token: string;
 }
 
+// ---- Self-service registration (docs/dev-notes/20261025-self-registration-design.md §3.2) ----
+// Contract shared with the backend agent — do not change unilaterally:
+//   POST /auth/register               201 {"detail":"verification email sent"}
+//                                     400 {"detail":"username already taken"} (email conflict
+//                                     also answers 201 to prevent account enumeration)
+//   POST /auth/verify-registration    200 tokens+user | 400 invalid code (+remaining_attempts)
+//                                     | 410 code expired
+//   POST /auth/resend-verification    202 | 429 {"detail":"cooldown"}
+//   GET  /auth/check-username         {"available": bool, "suggestions": [...] | null}
+export interface RegisterRequest {
+  email: string;
+  username: string;
+  password: string;
+}
+
+export interface CheckUsernameResponse {
+  available: boolean;
+  suggestions: string[] | null;
+}
+
+export interface VerifyRegistrationResponse {
+  access_token: string;
+  refresh_token: string;
+  token_type: string;
+  user: UserProfile;
+}
+
 export interface DeviceInfo {
   id: number;
   device_name: string;
@@ -48,6 +75,14 @@ export const authApi = {
     }>('/auth/change-password', data),
   registerDevice: (data: { device_name: string; platform: string; push_token?: string }) =>
     client.post<DeviceInfo>('/auth/devices', data),
+  register: (data: RegisterRequest) =>
+    client.post<{ detail: string }>('/auth/register', data),
+  verifyRegistration: (data: { email: string; code: string }) =>
+    client.post<VerifyRegistrationResponse>('/auth/verify-registration', data),
+  resendVerification: (email: string) =>
+    client.post<{ detail?: string }>('/auth/resend-verification', { email }),
+  checkUsername: (username: string) =>
+    client.get<CheckUsernameResponse>('/auth/check-username', { params: { username } }),
   listDevices: () => client.get<DeviceInfo[]>('/auth/devices'),
   removeDevice: (id: number) => client.delete(`/auth/devices/${id}`),
 };

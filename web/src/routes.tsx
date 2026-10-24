@@ -2,6 +2,9 @@ import { lazy, Suspense } from 'react';
 import { Navigate, useParams, useSearchParams } from 'react-router-dom';
 
 const Login = lazy(() => import('./pages/Login'));
+// 自助注册（2026-10-25）：公开区路由，挂在登录页同级，不进 RequireAuth
+const Register = lazy(() => import('./pages/Register'));
+const RegisterVerify = lazy(() => import('./pages/RegisterVerify'));
 const ChangePassword = lazy(() => import('./pages/ChangePassword'));
 const Dashboard = lazy(() => import('./pages/Dashboard'));
 const InstrumentList = lazy(() => import('./pages/InstrumentList'));
@@ -113,6 +116,11 @@ const LegacyCryptoRedirect = () => {
 
 export const routes: RouteConfig[] = [
   { path: '/login', element: wrap(Login), auth: false },
+  // 自助注册两步（2026-10-25）：auth:false ⇒ App.tsx 将其渲染为独立公开路由
+  //（AppLayout/RequireAuth 之外），与 /login 同级；verify 页支持魔法链接回跳
+  // ?verified=1&email= / ?verified=0&reason=
+  { path: '/register', element: wrap(Register), auth: false },
+  { path: '/register/verify', element: wrap(RegisterVerify), auth: false },
   // 强制改密页（2026-10-24）：must_change_password=true 时 RequireAuth 会
   // 把所有路由弹回这里；无菜单，不出现在侧边栏
   { path: '/change-password', element: wrap(ChangePassword), auth: true },

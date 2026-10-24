@@ -1,0 +1,550 @@
+/* ============================================================
+   Self-service registration flow (/register, /register/verify)
+   — docs/dev-notes/20261025-self-registration-design.md §4
+
+   Reuses the login page chrome (.login-page--sci-fi / .login-glass /
+   .login-input-wrapper) and adds the register-specific pieces: inline
+   field feedback, password policy hints, OTP cells, the resend ring and
+   the success panels. Every color goes through a theme token; the
+   register pages render on the same fixed-dark canvas as login, whose
+   dark-canvas token overrides live in AuthPageChrome (values identical
+   to Login.tsx) so deep links work without Login mounting first.
+   ============================================================ */
+
+/* Visually-hidden utility. Referenced by Login.tsx since the a11y review
+   (review-a11y-mobile P0-1) but never actually defined — defining it here
+   makes those labels truly screen-reader-only and is shared by the
+   registration fields. */
+.ad-sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* The registration form is taller than login's two fields; Login.tsx pins
+   both panels to 480px on desktop via an inline <style> — let ours grow.
+   Extra class weight so this wins regardless of inline-style source order. */
+@media (min-width: 992px) {
+  .register-page.login-page--sci-fi .login-brand-panel,
+  .register-page.login-page--sci-fi .login-form-panel {
+    height: auto;
+    min-height: 480px;
+  }
+}
+
+/* ---- Inline field feedback ---- */
+.register-field-msg {
+  margin-top: 6px;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.register-field-error,
+.register-field-ok {
+  margin: 0;
+}
+
+.register-field-error {
+  color: var(--color-error-bright);
+}
+
+.register-field-ok {
+  color: var(--color-success-bright);
+}
+
+.register-field--error .login-input-wrapper {
+  border-color: var(--color-error-border);
+}
+
+.register-field--error .login-input-wrapper:focus-within {
+  box-shadow: 0 0 0 3px var(--color-error-dim);
+}
+
+.register-field--valid .login-input-wrapper {
+  border-color: var(--color-success-border);
+}
+
+/* ---- Username suggestions ---- */
+.register-suggestions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin-top: 6px;
+}
+
+.register-suggestions-label {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.register-suggestion-chip {
+  padding: 3px 12px;
+  border-radius: 999px;
+  border: 1px solid var(--accent-border);
+  background: var(--accent-dim);
+  color: var(--accent);
+  font-size: 12px;
+  font-family: var(--font-mono);
+  cursor: pointer;
+  transition: background-color 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+}
+
+.register-suggestion-chip:hover,
+.register-suggestion-chip:focus-visible {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--text-on-accent);
+}
+
+/* ---- Password policy hints (two-tone strength bar + rule list) ---- */
+.register-policy {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.register-policy-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.register-policy-strength {
+  display: flex;
+  flex: 1;
+  gap: 4px;
+}
+
+.register-policy-seg {
+  height: 3px;
+  flex: 1;
+  border-radius: 2px;
+  background: var(--login-input-border);
+  transition: background-color 0.25s ease;
+}
+
+/* On the way up the bar fills with the accent; once the whole policy is
+   satisfied every filled segment turns success green (达标变绿不再恐吓). */
+.register-policy-seg--on {
+  background: var(--accent);
+}
+
+.register-policy-seg--ok {
+  background: var(--color-success-bright);
+}
+
+.register-policy-strength-label {
+  font-size: 12px;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+.register-policy-count {
+  font-size: 12px;
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.register-policy-count--warn {
+  color: var(--color-warning-bright);
+}
+
+.register-policy-count--over {
+  color: var(--color-error-bright);
+}
+
+.register-policy-rules {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.register-policy-rule {
+  font-size: 12px;
+  color: var(--text-muted);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.register-policy-rule::before {
+  content: '○';
+  font-size: 11px;
+  line-height: 1;
+}
+
+.register-policy-rule--ok {
+  color: var(--color-success-bright);
+}
+
+.register-policy-rule--ok::before {
+  content: '✓';
+}
+
+/* ---- OTP cells ---- */
+.otp-group {
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+}
+
+.otp-cell {
+  width: 44px;
+  height: 44px;
+  min-width: 44px; /* keep the 44px touch target even when the row gets tight */
+  border-radius: var(--radius-md);
+  border: 1px solid var(--login-input-border);
+  background: var(--login-input-bg);
+  color: var(--text-primary);
+  font-family: var(--font-mono);
+  font-size: 20px;
+  text-align: center;
+  caret-color: var(--accent);
+  outline: none;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease, background-color 0.2s ease;
+}
+
+.otp-cell:focus {
+  border-color: var(--accent-border);
+  box-shadow: 0 0 0 3px var(--accent-soft);
+  background: var(--login-input-focus-bg);
+}
+
+.otp-cell:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+}
+
+.otp-group--error .otp-cell {
+  border-color: var(--color-error-border);
+}
+
+.otp-group--error .otp-cell:focus {
+  box-shadow: 0 0 0 3px var(--color-error-dim);
+}
+
+/* Success: green cells + a soft ripple before the auto-navigate. */
+.otp-group--success .otp-cell {
+  border-color: var(--color-success-bright);
+  color: var(--color-success-bright);
+  animation: otp-pop 0.35s ease;
+}
+
+@keyframes otp-pop {
+  0% {
+    transform: scale(1);
+    box-shadow: 0 0 0 0 var(--color-success-dim);
+  }
+  60% {
+    transform: scale(1.08);
+    box-shadow: 0 0 0 8px transparent;
+  }
+  100% {
+    transform: scale(1);
+    box-shadow: 0 0 0 0 transparent;
+  }
+}
+
+/* One gentle shake per fresh failure — the component re-applies this class
+   on every new idle → error transition. */
+.otp-group--shake {
+  animation: otp-shake 0.4s ease;
+}
+
+@keyframes otp-shake {
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+  20% {
+    transform: translateX(-4px);
+  }
+  40% {
+    transform: translateX(4px);
+  }
+  60% {
+    transform: translateX(-3px);
+  }
+  80% {
+    transform: translateX(3px);
+  }
+}
+
+/* ---- Verify page copy + notices ---- */
+.register-otp-lead {
+  margin: 0;
+  font-size: 13px;
+  color: var(--text-secondary);
+  line-height: 1.6;
+  text-align: center;
+}
+
+.register-otp-email {
+  color: var(--text-primary);
+  font-weight: 500;
+}
+
+.register-notice {
+  margin: 0;
+  padding: 10px 12px;
+  border-radius: var(--radius-md);
+  background: var(--color-error-dim);
+  border: 1px solid var(--color-error-border);
+  color: var(--color-error-bright);
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.register-banner {
+  margin: 0;
+  padding: 10px 12px;
+  border-radius: var(--radius-md);
+  background: var(--color-warning-hover-dim);
+  border: 1px solid var(--color-warning-border);
+  color: var(--text-secondary);
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.register-email-catchup {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+/* ---- Resend ring ---- */
+.register-resend-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-top: 4px;
+}
+
+.resend {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.resend-btn {
+  position: relative;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  border: none;
+  background: var(--login-input-bg);
+  color: var(--text-muted);
+  font-size: 14px;
+  font-variant-numeric: tabular-nums;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: not-allowed;
+  flex-shrink: 0;
+}
+
+.resend-btn:focus-visible {
+  outline: 2px solid var(--accent-border);
+  outline-offset: 2px;
+}
+
+.resend-btn--ready {
+  color: var(--accent);
+  cursor: pointer;
+  animation: resend-ready-bounce 0.45s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.resend-btn--sending {
+  color: var(--accent);
+  cursor: wait;
+}
+
+@keyframes resend-ready-bounce {
+  0% {
+    transform: scale(1);
+  }
+  45% {
+    transform: scale(1.18);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+.resend-ring {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+
+.resend-ring-track,
+.resend-ring-progress {
+  fill: none;
+  stroke-width: 2;
+}
+
+.resend-ring-track {
+  stroke: var(--login-input-border);
+}
+
+.resend-ring-progress {
+  stroke: var(--accent);
+  stroke-linecap: round;
+  transform: rotate(-90deg);
+  transform-origin: center;
+  transition: stroke-dashoffset 0.9s linear;
+}
+
+.resend-hint {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+/* When the code expired / was invalidated we lift the resend control so the
+   "给你发一封新的" path is the obvious next action. */
+.resend--emphasize .resend-hint {
+  color: var(--text-primary);
+  font-weight: 500;
+}
+
+.resend--emphasize .resend-btn--ready {
+  box-shadow: 0 0 0 3px var(--accent-soft);
+}
+
+/* ---- Success panels & links ---- */
+.register-success {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 12px;
+  padding: 24px 0 8px;
+}
+
+.register-success-badge {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  border: 2px solid var(--color-success-bright);
+  background: var(--color-success-dim);
+  color: var(--color-success-bright);
+  font-size: 32px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: register-badge-pop 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+@keyframes register-badge-pop {
+  0% {
+    transform: scale(0.4);
+    opacity: 0;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+.register-success-title {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.register-success-text {
+  margin: 0;
+  font-size: 13px;
+  color: var(--text-secondary);
+  line-height: 1.6;
+}
+
+.register-primary-link {
+  display: inline-block;
+  margin-top: 8px;
+  padding: 0 28px;
+  height: 40px;
+  line-height: 40px;
+  border-radius: var(--radius-lg);
+  background: var(--accent);
+  color: var(--text-on-accent);
+  font-size: 14px;
+  font-weight: 600;
+  text-decoration: none;
+  transition: opacity 0.2s ease, transform 0.2s ease;
+}
+
+.register-primary-link:hover {
+  opacity: 0.92;
+  transform: translateY(-1px);
+}
+
+.register-link {
+  color: var(--text-secondary);
+  font-size: 12px;
+  text-decoration: none;
+  margin-left: 6px;
+}
+
+.register-link:hover,
+.register-link:focus-visible {
+  color: var(--accent);
+  text-decoration: underline;
+}
+
+.register-link--accent {
+  color: var(--accent);
+  font-size: 13px;
+  font-weight: 500;
+}
+
+/* ---- Mobile (<992px): single column, tight OTP row ---- */
+@media (max-width: 991px) {
+  .otp-group {
+    gap: 6px;
+  }
+
+  .otp-cell {
+    width: 44px;
+    height: 44px;
+    font-size: 20px;
+  }
+
+  .register-resend-row {
+    justify-content: center;
+  }
+}
+
+/* ---- Reduced motion: keep color feedback, drop movement ---- */
+@media (prefers-reduced-motion: reduce) {
+  .otp-group--shake,
+  .otp-group--success .otp-cell,
+  .resend-btn--ready,
+  .register-success-badge,
+  .register-primary-link {
+    animation: none;
+  }
+
+  .resend-ring-progress,
+  .register-policy-seg {
+    transition: none;
+  }
+}

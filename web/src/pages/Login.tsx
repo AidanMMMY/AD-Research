@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Navigate, useNavigate } from 'react-router-dom';
+import { Link, Navigate, useNavigate } from 'react-router-dom';
 import { message } from 'antd';
 import { AxiosError } from 'axios';
 import { UserOutlined, LockOutlined } from '@ant-design/icons';
@@ -60,6 +60,14 @@ export default function Login() {
       // (e.g. 2026-07-01 UserResponse missing 'id' -> 500 -> user thought
       // password was wrong). See runbook 20260701 section 4-B.
       const status = (err as AxiosError)?.response?.status;
+      const detail = (err as AxiosError<{ detail?: string }>)?.response?.data?.detail;
+      // 未完成邮箱验证（自助注册 2026-10-25）：明确指出下一步，而不是笼统的
+      // 「登录失败」，验证页里可以重发验证邮件。
+      if (status === 403 && detail === 'email not verified') {
+        message.info('这个账号还没完成邮箱验证，先去验证一下邮箱');
+        navigate('/register/verify');
+        return;
+      }
       if (status === 401) {
         message.error('用户名或密码错误');
       } else if (status && status >= 500) {
@@ -343,6 +351,11 @@ export default function Login() {
 
         <div className="login-form-hint">
           按 Enter 登录 &middot; 忘记密码请联系管理员
+          <br />
+          还没有账号？
+          <Link to="/register" className="register-link register-link--accent">
+            创建账号 →
+          </Link>
         </div>
       </div>
 
