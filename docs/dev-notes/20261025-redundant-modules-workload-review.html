@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>20261025 冗余模块工作量与拖累量化评估</title>
+<style>
+:root{--ink:#1c2430;--muted:#5b6a7a;--line:#dde4ec;--bg:#f7f9fb;--card:#fff;--accent:#0f5c8c;--warn:#b3541e;--ok:#1e7a4c;--dead:#8a2f39}
+*{box-sizing:border-box}
+body{font-family:"PingFang SC","Hiragino Sans GB","Microsoft YaHei",system-ui,sans-serif;color:var(--ink);background:var(--bg);margin:0;line-height:1.75;font-size:15px}
+main{max-width:960px;margin:0 auto;padding:32px 24px 64px}
+h1{font-size:25px;border-bottom:3px solid var(--accent);padding-bottom:10px;margin:0 0 6px}
+h2{font-size:20px;margin-top:40px;padding-left:10px;border-left:5px solid var(--accent)}
+h3{font-size:16.5px;margin-top:26px}
+.meta{color:var(--muted);font-size:13px;margin-bottom:8px}
+.meta code{background:#eef2f6;padding:1px 5px;border-radius:3px}
+blockquote{margin:14px 0;padding:10px 16px;background:#eef5fa;border-left:4px solid var(--accent);border-radius:0 6px 6px 0;font-size:14px;color:#2a3b4d}
+table{border-collapse:collapse;width:100%;margin:14px 0;background:var(--card);font-size:13.5px;border:1px solid var(--line)}
+th{background:#eaf0f6;text-align:left;padding:7px 10px;border:1px solid var(--line);white-space:nowrap}
+td{padding:6px 10px;border:1px solid var(--line);vertical-align:top}
+tr:nth-child(even) td{background:#fbfcfe}
+code{font-family:"SF Mono",Menlo,Consolas,monospace;font-size:12.5px;background:#eef2f6;padding:1px 5px;border-radius:3px;word-break:break-all}
+.hl{background:#fdf1e2;font-weight:600}
+.tag{display:inline-block;padding:0 8px;border-radius:10px;font-size:12px;font-weight:600;color:#fff;line-height:20px;white-space:nowrap}
+.t-keep{background:var(--ok)}.t-narrow{background:var(--accent)}.t-arch{background:#8a6d1f}.t-retire{background:var(--dead)}
+.kpi{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px;margin:18px 0}
+.kpi div{background:var(--card);border:1px solid var(--line);border-radius:8px;padding:12px 14px;text-align:center}
+.kpi b{display:block;font-size:24px;color:var(--accent);line-height:1.3}
+.kpi span{font-size:12.5px;color:var(--muted)}
+footer{margin-top:48px;color:var(--muted);font-size:12.5px;border-top:1px solid var(--line);padding-top:12px}
+ul li,ol li{margin:4px 0}
+</style>
+</head>
+<body>
+<main>
+<h1>冗余模块工作量与拖累量化评估（多端重点）</h1>
+<p class="meta">日期 2026-10-25 · 只读评估（HEAD <code>212a9ec</code>，未改动源代码） · 前置：<code>20261025-platform-slimming-review.md</code> 复核 · 方法：git 量化 + 定点核验 + dev-notes/记忆库占比作「AI 会话投入」代理</p>
+
+<h2>一、结论速览</h2>
+<div class="kpi">
+<div><b>7.3%</b><span>native+ios 占产品代码体积</span></div>
+<div><b>22.3%</b><span>占近 30 天代码改动</span></div>
+<div><b>27.6%</b><span>占改密特性插入行</span></div>
+<div><b>80 / 119 天</b><span>native / ios 有机 commit 沉默期</span></div>
+</div>
+<ol>
+<li><b>多端是「小体积、高税率」的拖累</b>：代码量只占 7.3%，却占近 30 天代码改动的 <span class="hl">22.3%</span>、改密单一特性插入行的 <span class="hl">27.6%</span>、8/3–8/6 冲刺 commit 的 <span class="hl">33.3%</span>。拖累不在体积，在「每个横切特性 ×3 端复制 + 修竞态」的乘数效应。</li>
+<li><b>旧 <code>ios/ADResearch</code> 应立即归档（退役第一候选）</b>：全生命周期仅 3 个 commit，其中 2 个（66.7%）是 10-25 被后端改密倒逼的兼容补丁；目录内<b>连 .xcodeproj 都没有</b>（无法构建发布）；native 自己的 README:158-160 已写明「如确认废弃可另行删除」；全仓无任何 CI/脚本/编排引用。</li>
+<li><b>瘦身报告全部结论今天仍成立</b>（第四节逐条复核），包括旧 iOS refresh 轮换缺陷（<code>AuthManager.swift:81</code> 只回写 access、不存轮换后的 refresh，问题仍在）。</li>
+<li><b>research/ 五进程原型确认为死代码</b>：<code>orchestrator.py:46</code> 丢弃 <code>_interval</code>、<code>:84</code> 每 300 秒复活已退出 agent；7-16 后零功能 commit；主平台/Dockerfile/compose 零引用。</li>
+<li><b>核心后台不可砍论据扎实</b>：生产 7 容器、scheduler 92 处 add_job、app 129K 行 + 124 个测试文件。</li>
+<li><b>最划算的一刀</b>：归档 <code>ios/</code> + AGENTS.md 写死「Swift 客户端只保留一套」，预计消除每次横切特性约 10–15% 客户端税。</li>
+</ol>
+
+<h2>二、量化数据</h2>
+<h3>2.1 代码规模（当前工作树）</h3>
+<table>
+<tr><th>模块</th><th>文件数</th><th>行数</th><th>测试</th></tr>
+<tr><td>app/（Python）</td><td>—</td><td>129,362</td><td>124 个 test_*.py</td></tr>
+<tr><td>web/src（TS/TSX）</td><td>—</td><td>49,618</td><td>19 个测试文件</td></tr>
+<tr><td class="hl">native/（Swift）</td><td>75</td><td>12,876</td><td>仅手工脚本，无 XCTest、无 CI</td></tr>
+<tr><td class="hl">ios/（Swift）</td><td>14</td><td>1,180</td><td>同上；<b>无 .xcodeproj</b></td></tr>
+<tr><td>research/（Python）</td><td>9</td><td>557</td><td>无</td></tr>
+<tr><td>agent/（Python）</td><td>22</td><td>9,827</td><td>无</td></tr>
+</table>
+<p>native+ios 合计 14,056 行 = 产品代码（193,036 行）的 <b>7.3%</b>。</p>
+
+<h3>2.2 Git 维护负担（2026-07-01 至今：530 / 739 commit，即 72% 历史在本窗口）</h3>
+<table>
+<tr><th>目录</th><th>触及 commit</th><th>插入+删除行</th><th>占全仓 churn</th></tr>
+<tr><td>app</td><td>238</td><td>114,688 + 7,835</td><td>25.8%</td></tr>
+<tr><td>web</td><td>205</td><td>113,475 + 44,697</td><td>33.4%</td></tr>
+<tr><td class="hl">native</td><td class="hl">17</td><td class="hl">14,274 + 648</td><td class="hl">3.1%</td></tr>
+<tr><td class="hl">ios</td><td class="hl">2</td><td class="hl">461 + 15</td><td class="hl">0.1%</td></tr>
+<tr><td>research</td><td>2</td><td>578 + 21</td><td>0.1%</td></tr>
+<tr><td>agent</td><td>12</td><td>11,272 + 455</td><td>2.5%</td></tr>
+<tr><td>scripts</td><td>64</td><td>12,400 + 539</td><td>2.7%</td></tr>
+<tr><td>deploy</td><td>48</td><td>1,018 + 319</td><td>0.3%</td></tr>
+<tr><td>docs</td><td>129</td><td>72,047 + 3,848</td><td>16.0%（html 镜像 36,129 行 &gt; md 26,088 行）</td></tr>
+<tr><td>alembic</td><td>43</td><td>5,112 + 323</td><td>1.1%</td></tr>
+<tr><td><b>全仓合计</b></td><td><b>530</b></td><td><b>412,538 + 61,784</b></td><td><b>100%（474,322 churn）</b></td></tr>
+</table>
+<p class="meta">注：commit 按「触及该目录」计，跨目录 commit 重复计入；行数按 <code>git log --numstat</code> 聚合。</p>
+
+<h3>2.3 近 30 天口径（全仓仅 14 commit）——拖累最直观窗口</h3>
+<table>
+<tr><th>目录</th><th>churn（行）</th><th>占比</th></tr>
+<tr><td>app</td><td>2,446</td><td>55.1%</td></tr>
+<tr><td>web</td><td>861</td><td>19.4%</td></tr>
+<tr><td class="hl">native</td><td class="hl">513</td><td class="hl">11.6%</td></tr>
+<tr><td class="hl">ios</td><td class="hl">476</td><td class="hl">10.7%</td></tr>
+<tr><td>scripts / alembic</td><td>61 / 83</td><td>3.2%</td></tr>
+<tr><td>research / agent / deploy</td><td>0</td><td>0%</td></tr>
+</table>
+<p><b>native+ios = 989 / 4,440 = 22.3%</b> 的近 30 天改动，全部来自 ee22869 / 0bcd07f 两个改密兼容 commit（14 commit 中占 2）。即最近一个月<b>每 5 行改动就有 1 行花在两个零外部用户的原生客户端兼容上</b>。</p>
+
+<h3>2.4 单特性解剖：首登强制改密（ee22869 + 0bcd07f）</h3>
+<table>
+<tr><th>端</th><th>插入行</th><th>占特性比</th></tr>
+<tr><td>app（后端）</td><td>1,012</td><td>33.4%</td></tr>
+<tr><td>web</td><td>825</td><td>27.2%</td></tr>
+<tr><td class="hl">ios（旧客户端）</td><td class="hl">452</td><td class="hl">14.9%</td></tr>
+<tr><td class="hl">native</td><td class="hl">385</td><td class="hl">12.7%</td></tr>
+<tr><td>docs / scripts / alembic</td><td>354</td><td>11.7%</td></tr>
+</table>
+<ul>
+<li><b>Swift 两端合计 837 行 = 特性的 27.6%</b>，另加两端各一份手工验证脚本（126 + 105 行）。</li>
+<li>三天后 0bcd07f 专修「native 刷新回调覆盖改密令牌」竞态（native 109+11、ios 9+2 行）——<b>多端复制本身制造的第二个 bug</b>，与瘦身报告预言的三端同步成本一致。</li>
+</ul>
+
+<h3>2.5 使用衰减与沉默期</h3>
+<table>
+<tr><th>客户端</th><th>诞生</th><th>活跃窗口</th><th>沉默期</th><th>复活原因</th></tr>
+<tr><td>ios/</td><td>06-28（脚手架 6c494bb）</td><td>仅 1 天</td><td class="hl">119 天零 commit</td><td>10-25 改密倒逼兼容</td></tr>
+<tr><td>native/</td><td>08-03（523debd）</td><td>8/3–8/5 三天 15 commit（0.1.0→0.4.0）</td><td class="hl">80 天零 commit（8/6–10/24）</td><td>10-25 仅兼容</td></tr>
+</table>
+<p>两客户端初始冲刺后<b>从未再产生任何有机功能迭代</b>，仅有的后期投入都是「别被后端锁死」的防御性适配。</p>
+
+<h3>2.6 AI 会话投入代理指标</h3>
+<ul>
+<li>dev-notes：134 个 .md / 1.55 MB（另有 86 个 html 镜像）；docs 占 7-1 以来 24% 的 commit（129/530）——文档即 AI 会话产出痕迹。</li>
+<li>native/iOS 主题文档：20260628 三部曲共 <b>68.1KB（占全部 md 字节 4.4%）</b>，是 dev-notes 最大单一主题规划投入，且规划对象 119 天后被证明为弃子；另有 20260803-overnight-delivery（native 章节约 40%）、20261024-first-login-password-policy（双端章节）。</li>
+<li>项目记忆库：71 条中 3 条 dedicated 于 native/macOS（4.2%），另有 1 条部分涉及。</li>
+<li>合计口径：<b>native/ios 相关会话产出约占文档字节 5%、近期代码 churn 22%</b>。token 消耗以 commit/文档占比代理（局限见第五节）。</li>
+</ul>
+
+<h2>三、瘦身报告结论逐条复核</h2>
+<table>
+<tr><th>论断</th><th>复核</th><th>证据</th></tr>
+<tr><td>旧 iOS refreshTokenIfNeeded 只存新 access、不存轮换 refresh</td><td><span class="tag" style="background:var(--dead)">仍成立</span></td><td><code>ios/ADResearch/Services/Auth/AuthManager.swift:70-96</code>：第 81 行仅写 accessToken；对照 login(:48) 与 changePassword(:59) 均同时写 refreshToken。后端轮换 refresh 时第二次刷新必失效登出</td></tr>
+<tr><td>native 在 ee22869/0bcd07f 接入强制改密 = 实际投入</td><td><span class="tag" style="background:var(--dead)">成立且被低估</span></td><td>见 2.4/2.5：0bcd07f 竞态修复（native 109+11 行）正是多端复制代价</td></tr>
+<tr><td>research/ 原型 interval 被丢弃、有重复拉起问题</td><td><span class="tag" style="background:var(--dead)">仍成立</span></td><td><code>research/orchestrator.py:34-40</code> 声明间隔；<code>:46</code> <code>for name, fn, _interval in AGENTS</code> 弃用；<code>:72-84</code> 每 300 秒 respawn；全仓 Dockerfile/compose/app 零引用</td></tr>
+<tr><td>agent 与主平台 CLS 双采集（同 endpoint）</td><td><span class="tag" style="background:var(--dead)">仍成立</span></td><td>app <code>app/services/news/sources/cls.py:53</code> 与 agent <code>agent/workers/cls.py:94-95</code> 同用 <code>cls.cn/api/cache</code>；重叠另有 reddit、xueqiu；独有 stocktwits（TLS 指纹 744b42a）、x、fed_intl、gov_china、eastmoney_news</td></tr>
+<tr><td>native 无 XCTest/原生 CI、验证靠 swiftc -parse</td><td><span class="tag" style="background:var(--dead)">仍成立</span></td><td><code>.github/workflows/</code> grep 零命中；<code>native/ADResearch/README.md:155</code> 验证命令即 <code>swiftc -parse</code> 两趟</td></tr>
+<tr><td>旧 ios 与 native 不联动、README 已声明可删</td><td><span class="tag" style="background:var(--dead)">仍成立</span></td><td><code>native/ADResearch/README.md:158-160</code>；ios/ 无 xcodeproj、无 CI、无外部引用</td></tr>
+<tr><td>核心后台不可砍</td><td><span class="tag" style="background:var(--ok)">论据更扎实</span></td><td>生产 7 容器（deploy/aliyun-ecs/docker-compose.yml）；<code>app/core/scheduler.py</code> 92 处 add_job；停 scheduler/celery 页面数据停滞</td></tr>
+</table>
+
+<h2>四、分级处置建议</h2>
+<h3>4.1 四级总表</h3>
+<table>
+<tr><th>模块</th><th>级别</th><th>一句话理由</th></tr>
+<tr><td>app/ web/ + scheduler + 双 Celery + deploy</td><td><span class="tag t-keep">保留</span></td><td>产品本体与唯一数据链路</td></tr>
+<tr><td>agent/</td><td><span class="tag t-narrow">收窄</span></td><td>生产 cron 在跑；按源合并去重，保独有源</td></tr>
+<tr><td>native/ADResearch（macOS 主体）</td><td><span class="tag t-narrow">收窄</span></td><td>有真实构建/菜单栏价值，冻结 parity，加契约冒烟</td></tr>
+<tr><td>native/ 内 iOS target</td><td><span class="tag t-arch">归档</span></td><td>从未真机验证，实验冻结</td></tr>
+<tr><td>research/</td><td><span class="tag t-arch">归档</span></td><td>死原型，零引用，interval 缺陷未修</td></tr>
+<tr><td>ios/ADResearch（旧）</td><td><span class="tag t-retire">退役</span></td><td>无法构建、无使用、README 已判死刑</td></tr>
+</table>
+
+<h3>4.2 ios/ADResearch —— 退役（第一优先）</h3>
+<ul>
+<li><b>工作量证据</b>：全周期 3 commit / 1,195 插入行；2 commit（10-25）+ 476 行（占生命周期插入 39.9%）纯为改密兼容；119 天沉默；无 xcodeproj，无法构建也就不可能发布过。</li>
+<li><b>迁移成本</b>：≈0。后端兼容 shim 已随 ee22869 上线；全仓 grep 无 CI/脚本/编排引用 <code>ios/ADResearch</code>。</li>
+<li><b>风险</b>：仅剩「所有者私藏使用」可能，而目录无工程文件无法构建，可能性极低；动手前口头确认一次。</li>
+<li><b>回滚要点</b>：单独 commit 执行 <code>git rm -r ios/</code>（历史永在）；回滚 = <code>git checkout 0bcd07f -- ios/</code>。同步删 AGENTS.md 目录段对应行，避免 AI 会话继续被误导。</li>
+</ul>
+
+<h3>4.3 native/ADResearch（macOS）—— 收窄为 companion</h3>
+<ul>
+<li><b>工作量证据</b>：17 commit / +14,274 行集中 8/3–8/5；之后 80 天零有机投入；改密特性付出 494 行（385 兼容 + 109 竞态修复）。</li>
+<li><b>保留理由</b>：菜单栏行情、⌘K、深链、本地提醒是 Web 给不了的桌面效率；有 DMG 构建记录。</li>
+<li><b>收窄动作</b>：功能冻结在晨读/资讯/宏观/标的/评分阅读路径；不再追 Web parity；下一步投入前先做真实 <code>xcodebuild</code> + 登录/refresh/研报解码三契约冒烟（手工 Codable 已两次漂移：b9d43d2、0bcd07f）。</li>
+<li><b>决策门</b>：未来 60 天仍无有机 commit，则降级 Web-only 并归档。</li>
+<li><b>回滚要点</b>：归档前打 tag（如 <code>native-0.4.0-final</code>）；深链 <code>alloyresearch://</code> 若被外部笔记引用需先盘点。</li>
+</ul>
+
+<h3>4.4 native/ 内 iOS target —— 归档（实验冻结）</h3>
+<p>共享 target 无真机、无 TestFlight、无发布证据。冻结 = 不再为 iOS 形态单独适配（macOS 优先），成本几乎为零。</p>
+
+<h3>4.5 research/ —— 归档</h3>
+<ul>
+<li><b>证据</b>：9 文件 557 行；最后功能 commit 421130c（7-16），其后仅 ruff 顺手清理；orchestrator 缺陷（:46/:84）从未修；主平台零引用。</li>
+<li><b>迁移成本</b>：≈0（价值已由 agent/overnight_research_v2 取代）。</li>
+<li><b>风险/回滚</b>：无消费者；回滚 = git 历史。建议与 ios/ 分开各自单独 commit 归档。</li>
+</ul>
+
+<h3>4.6 agent/ —— 收窄（按源合并，不可一刀切停）</h3>
+<ul>
+<li><b>证据</b>：12 commit / 11,272 行，7–8 月有真实生产事故修复（TLS 指纹轮换、镜像丢失双保险）；生产 cron 每小时在跑。</li>
+<li><b>合并清单</b>：CLS（与 <code>news_cls_5m</code> 同 endpoint，agent 侧停此源）、reddit、xueqiu 归主平台；<b>保留</b> stocktwits（TLS 指纹抗 WAF）、x、fed_intl、gov_china、eastmoney_news 等独有源。</li>
+<li><b>顺序</b>（strangler）：主链路对等 → 双跑对账 → 迁告警/watchdog → 停对应 cron 项 → 快照回滚；下线任何源前先盘点 JSON 产物与仓库外消费者。</li>
+</ul>
+
+<h3>4.7 看似冗余但不可砍（验证瘦身报告论据）</h3>
+<table>
+<tr><th>对象</th><th>为什么不能砍</th></tr>
+<tr><td>APScheduler + 双 Celery worker</td><td>Web 全部行情/指标/评分/信号/公告的上游；scheduler.py 92 处 add_job；停了 API 在线但数据停滞</td></tr>
+<tr><td>deploy/aliyun-ecs 编排 + update.sh</td><td>生产唯一部署入口，含迁移校验与镜像清理（20260805 满盘事故修复）</td></tr>
+<tr><td>多 provider LLM fallback 链</td><td>20260928 主备切换链已两次救场（MiniMax 额度耗尽自动兜底）</td></tr>
+<tr><td>trafilatura→Jina→LLM 正文降级链</td><td>各层分别承担低延迟/自愈/可用性，补协调而非删层</td></tr>
+<tr><td>wewe-rss 容器</td><td>公众号采集通道，生产常驻（compose 第 6 个服务）</td></tr>
+<tr><td>scripts/ 大杂烩</td><td>混有备份/恢复/watchdog 关键工具，只能分类归档不能整体删</td></tr>
+<tr><td>dev-notes html 镜像</td><td>用户既定阅读习惯；但其占 docs 行数 churn 58%，是 token 成本可观测点</td></tr>
+</table>
+
+<h2>五、方法论与局限</h2>
+<ol>
+<li><b>token 消耗为代理估算</b>：无法读取 AI 会话原始 token 计量，用 git churn（代码产出）、dev-notes 字节（文档产出）、记忆库条目占比（主题分布）三类代理。真实 token 含读代码/排障等未落盘部分，代理低估会话次数，但方向与占比稳健。</li>
+<li><b>commit 归属</b>：横切 commit 在分目录统计中重复计数，各目录 commit 之和 &gt; 总数；行数按 numstat 聚合无重复。</li>
+<li><b>近 30 天仅 14 commit</b>，小样本放大改密特性占比；因此同时给出全窗口（530 commit）数据：native+ios 仅占 churn 3.2%——结论不是「多端吃掉大盘」，而是「横切特性税率极高且无对等用户价值」。</li>
+<li><b>「无使用」基于无遥测推断</b>：仓内证据（无 CI、无发布、沉默期、无 xcodeproj）强烈但非绝对；退役前做一次所有者确认。</li>
+<li>生产运行态引用昨日瘦身报告的 ECS 只读核验（docker ps + cron），本日未重复登录生产。</li>
+</ol>
+
+<h2>六、执行清单（建议顺序）</h2>
+<ol>
+<li><b>【退役】</b>单独 commit <code>git rm -r ios/</code>；AGENTS.md 目录段删除对应行；后续横切特性预算立省约 15%（Swift 端一半）。</li>
+<li><b>【归档】</b>单独 commit <code>git rm -r research/</code>（或移 attic/ 并在 AGENTS.md 标记）。</li>
+<li><b>【规则】</b>AGENTS.md 增补：「Swift 客户端唯一实现 = native/ADResearch；新增横切契约改动只同步 Web + native，ios/ 不再同步」。</li>
+<li><b>【收窄】</b>agent 停 CLS 源（与主平台 news_cls_5m 完全重复），按 4.6 清单逐源 strangler。</li>
+<li><b>【收窄】</b>native 做一次真实 xcodebuild + 三契约冒烟，再决定 60 天观察窗是否启动。</li>
+</ol>
+
+<footer>AlloyResearch · docs/dev-notes/20261025-redundant-modules-workload-review · 只读评估产物，未改动源代码、未 commit/push</footer>
+</main>
+</body>
+</html>

@@ -1,0 +1,345 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>后端健康度摸底报告（20261025）</title>
+<style>
+  :root { color-scheme: light dark; }
+  body { font-family: -apple-system, 'PingFang SC', 'Microsoft YaHei', sans-serif; max-width: 980px; margin: 0 auto; padding: 24px 20px 80px; line-height: 1.7; color: #1f2328; background: #fff; }
+  h1 { border-bottom: 2px solid #d0d7de; padding-bottom: .3em; font-size: 1.7em; }
+  h2 { border-bottom: 1px solid #d8dee4; padding-bottom: .25em; margin-top: 2em; }
+  h3 { margin-top: 1.6em; background: #f6f8fa; padding: .45em .7em; border-left: 4px solid #0969da; border-radius: 3px; }
+  code { background: #f0f2f5; padding: .15em .4em; border-radius: 4px; font-size: .9em; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+  pre { background: #f6f8fa; padding: 12px 14px; border-radius: 8px; overflow-x: auto; }
+  pre code { background: none; padding: 0; }
+  table { border-collapse: collapse; width: 100%; margin: 1em 0; font-size: .92em; }
+  th, td { border: 1px solid #d0d7de; padding: 6px 10px; text-align: left; vertical-align: top; }
+  th { background: #f6f8fa; }
+  tr:nth-child(even) td { background: #fbfcfd; }
+  blockquote { border-left: 4px solid #d0d7de; margin: 1em 0; padding: .2em 1em; color: #57606a; background: #f6f8fa; }
+  hr { border: none; border-top: 1px solid #d0d7de; margin: 2.2em 0; }
+  li { margin: .25em 0; }
+  strong { color: #111; }
+  @media (prefers-color-scheme: dark) {
+    body { background: #0d1117; color: #c9d1d9; }
+    h1 { border-color: #30363d; } h2 { border-color: #21262d; }
+    h3 { background: #161b22; border-color: #1f6feb; }
+    code { background: #21262d; } pre { background: #161b22; }
+    th { background: #161b22; } th, td { border-color: #30363d; }
+    tr:nth-child(even) td { background: #10151c; }
+    blockquote { background: #161b22; border-color: #30363d; color: #8b949e; }
+    hr { border-color: #21262d; }
+  }
+</style>
+</head>
+<body>
+<h1 id="app">后端健康度摸底报告（app/ 全面体检）</h1>
+<p><strong>摸底日期</strong>：2026-10-25（HEAD 212a9ec，main）
+<strong>摸底方式</strong>：只读代码走查 + AST/grep 模式扫描（分层、鉴权、N+1、索引、孤儿代码、调度时序），未修改任何源代码
+<strong>范围</strong>：<code>app/</code> 共 500 个 Python 文件——44 个 router（api/v1）、40+ service、2682 行 <code>app/core/scheduler.py</code>、4 个 Celery 任务模块、26 张模型表、~40 条 ETL pipeline
+<strong>背景基线</strong>：AGENTS.md、<code>20260701-platform-logic-audit.md</code>、<code>20260718-platform-indicator-audit-report.md</code>、<code>20260718-data-integrity-audit.md</code>、<code>20260628-ROADMAP.md</code>、20261024 首登改密（新代码质量基线）</p>
+<hr />
+<h2 id="_1">一、结论速览</h2>
+<ol>
+<li><strong>总体健康度：中上，且较 2026-07 审计基线显著改善。</strong> 历史 P0（14 项逻辑/安全类 + 调度/数据完整性类）绝大多数已修复且在代码注释中留了根因沉淀；鉴权、密钥治理、时区、misfire、ETL stuck 清理、连接池等曾经的系统性弱点均有工程化对策。</li>
+<li><strong>本轮发现 P0×1、P1×4、P2×6、P3×8。</strong> 唯一 P0 不是安全或单点 bug，而是<strong>调度时序竞态</strong>：评分(08:30)/信号(09:00) 与指标计算 Celery 任务（08:00 投递、可跑小时级、逐 chunk 渐进落库）之间没有完成同步，指标任务一旦超过 30 分钟（7100 标的的常态），当天评分会在"半宇宙"上计算横截面百分位并落库，且评分一天只跑一次、无兜底，错误分数当天不会被自动纠正。</li>
+<li><strong>安全基本面好</strong>：44 个 router 全部挂鉴权依赖或 internal token（唯一匿名端点 <code>/stream/prices</code> 为文档化的公开行情设计）；admin-only 端点覆盖真实交易下单/撤单/熔断重置、部署面板、用户管理；无 SQL 字符串拼接（唯一 <code>text(f...)</code> 是常量超时设置）；<code>AUTH_SECRET_KEY</code> 弱值非 dev 直接拒启；internal token 用常数时间比较；登录/改密有 Redis 限流；日志有 sanitize。</li>
+<li><strong>效率面</strong>：热点表索引齐备（etl_log/news/indicator/score/signal/trading）；news 列表与关联查询已批量化；SSE 曾经的连接池占用问题已修（session 不跨 yield、查询进线程池）；scoring 按市场分组批量 + 主动缓存失效。低效主要集中在<strong>调度链</strong>（信号生成 O(策略×全市场) 串行、auto_trade 循环内外部行情调用）与个别 router 的小 N+1。</li>
+<li><strong>分层</strong>：<code>api → services → models</code> 主干清晰（28/44 router 零直查 DB）；债务集中在 <code>news.py</code>（1500 行、24 处直查 ORM，业务逻辑与路由耦合）。<code>data/repositories</code> 层仅 1 个文件被使用，与 AGENTS.md 描述存在漂移。</li>
+<li><strong>历史核对</strong>：下表 26 项中 22 项已修复、3 项仍存在、1 项部分修复，另有 4 项本轮未复核（见核对表尾注）。</li>
+</ol>
+<hr />
+<h2 id="p0">二、P0 发现</h2>
+<h3 id="p0-1-dispatch">P0-1 评分/信号与指标计算存在跨进程竞态：dispatch 即放锁，评分读到"半宇宙"指标</h3>
+<p><strong>问题描述</strong>
+08:00 <code>run_indicator_calculation</code> 解析目标日后，拿到 <code>daily_pipeline</code> 锁、<code>calculate_indicators.delay(...)</code> 投递 Celery 任务，随后<strong>立即释放锁</strong>（with 块结束）。指标任务自身可运行 4-6 小时（soft 4h / hard 6h），SQL 后端按 chunk 执行并<strong>逐 chunk <code>db.commit()</code> 渐进落库</strong>。08:30 <code>run_score_calculation</code> 只等待 <code>daily_pipeline</code> 锁（此时早已释放），<code>ScoringService.calculate_daily_scores</code> 按"每市场最新指标日"取全市场指标行，<strong>没有任何行数/覆盖率校验</strong>。09:00 信号生成同理。</p>
+<p><strong>证据</strong>
+- <code>app/core/scheduler.py:602-623</code>（dispatch 后 with 块结束即放锁）；<code>app/core/scheduler.py:1550-1557</code>（08:00 job）、<code>app/core/scheduler.py:1574-1581</code>（08:30 评分 job）
+- <code>app/tasks/indicator.py:42-49</code>（soft_time_limit=4h、time_limit=6h）
+- <code>app/data/indicators/calculator.py:417</code>（<code>updated_count += _batch_calculate_indicators_sql(...)</code> 逐 chunk）、<code>calculator.py:461</code>（循环内 <code>db.commit()</code>）、<code>calculator.py:597-618</code>（chunk 循环 + UPSERT）
+- <code>app/services/scoring_service.py:186-212</code>（按 <code>max(trade_date)</code> group by market 取数后直接 <code>.all()</code> 全量计算，无覆盖率检查）
+- 评分一天仅 08:30 一跑（无评分兜底 job；17:00 兜底只补指标，见 <code>scheduler.py:1558-1573</code> 注释）</p>
+<p><strong>影响</strong>
+指标任务运行超过 30 分钟时（7000+ 标的的常态），08:30 评分把目标日的 <code>etf_indicator</code> 当作完整横截面，实际只有部分标的落库 → 百分位排名与 composite_score 系统性失真并<strong>落库对外</strong>；09:00 信号基于同样的不完整指标。当天不会再有评分重跑，错误分数持续一整天（直到次日 08:30）。</p>
+<p><strong>修复建议</strong>
+1. 评分/信号入口先等待指标完成信号：复用 <code>_acquire_indicator_date_lock</code> 的日期锁（任务结束才释放，<code>tasks/indicator.py:15-32</code>）轮询至消失，或查询 <code>etl_log</code> 中 <code>indicator_calculation</code> 当日 success；
+2. 评分前校验覆盖率：目标日 <code>etf_indicator</code> 行数 / active universe ≥ 95% 才计算，否则延迟重试（APScheduler <code>add_job</code> + <code>minutes=15</code> 重排）；
+3. 对齐兜底：增加 17:30 评分兜底 job（与 17:00 指标兜底配套），并让 paper_trade_auto 等评分完成信号。</p>
+<p><strong>验证方法</strong>
+生产侧：取历史某日，比较 <code>etl_log</code> 中 <code>indicator_calculation</code> 的 end_time 与 <code>score_calculation</code> 的 start_time，统计 overlap 天数；再对比当日 <code>etf_indicator</code> 行数与 <code>etf_score</code> 计算基数是否一致。本地侧：sqlite 内存库复现"逐 chunk 提交 + 中途评分"断言部分行可见。</p>
+<hr />
+<h2 id="p1">三、P1 发现</h2>
+<h3 id="p1-1-stuck-etl-120">P1-1 stuck-ETL 清理阈值（120 分钟）与合法长任务冲突，会误删活锁</h3>
+<p><strong>问题</strong>：<code>cleanup_stuck_etl_jobs</code> 每小时 :45 将 <code>running</code> 超过 120 分钟的 ETLLog 标为 failed 并删除映射的 Redis 锁。但多个 job 的合法运行时长 ≥ 2h：信号生成锁 TTL 按公式可到 14400s（4h）；<code>a_share_adj_factor_backfill</code> 锁 4h；指标 Celery 任务 6h；cninfo 日报锁 2h。<code>_ETL_JOB_LOCK_MAP</code> 把 <code>signal_generation</code>/<code>score_calculation</code> 映射到 <code>daily_pipeline</code>，即清理会删掉<strong>仍在被合法持有的</strong> <code>lock:daily_pipeline</code>。
+<strong>证据</strong>：<code>app/core/scheduler.py:90</code>（阈值 120）、<code>scheduler.py:1366</code>（<code>min(14400, ...)</code> 锁 TTL）、<code>scheduler.py:140-141</code>（映射）、<code>scheduler.py:216-279</code>（清理逻辑删锁）、<code>app/tasks/indicator.py:48</code>（6h）、<code>scheduler.py:460</code>（adj_factor 4h 锁）。
+<strong>影响</strong>：① etl_log 误报 failed（监控/面板失真，任务结束时又改回 success，中间窗口误导运维）；② 锁被提前删除后，<code>paper_trade_auto</code>（09:30 起 wait 3600s，<code>scheduler.py:1299-1304</code>）可提前闯入，与仍在运行的信号生成<strong>并发</strong>执行——模拟交易读到不完整信号；③ 多实例场景下其它等锁任务同样可能提前并发。
+<strong>建议</strong>：给 <code>_ETL_JOB_LOCK_MAP</code> 增加 per-job <code>max_runtime</code>（signal/indicator/adj_factor/cninfo 用 4-6h，其余维持 2h），清理按 job 阈值判断；或为 <code>record_etl</code> 增加 <code>heartbeat_at</code> 列（长任务每 5 分钟续约），清理只回收无心跳行。
+<strong>验证</strong>：人为构造 130 分钟的 signal_generation 运行，观察 :45 清理日志、etl_log 状态翻转、paper_trade_auto 是否提前执行。</p>
+<h3 id="p1-2-o">P1-2 信号生成 O(策略数 × 全市场标的) 串行，是调度链最大瓶颈</h3>
+<p><strong>问题</strong>：<code>run_signal_generation</code> 载入<strong>全部</strong> active instrument（A 股 ETF+个股+美股+Crypto，7000+），非横截面策略对每个标的逐一调用 <code>signal_service.generate_signals</code>（每次含行情查询+指标计算+持久化），单线程串行。
+<strong>证据</strong>：<code>app/core/scheduler.py:1346-1364</code>（etfs 全量载入）、<code>scheduler.py:1422-1436</code>（逐 ETF 循环）；横截面策略已有批量路径（<code>scheduler.py:1411-1420</code>）作对照。
+<strong>影响</strong>：耗时随活跃策略数线性放大（可到小时级）；期间持有 <code>daily_pipeline</code> 锁 → <code>paper_trade_auto</code> 最多等 1h 后放弃（当日模拟交易缺失）；也推迟 17:00 指标兜底取锁。
+<strong>建议</strong>：① 策略配置增加适用域过滤（market / instrument_type），ETF 动量策略不必跑 5600 只个股；② 逐标的策略改为分片并行：复用指标任务的 <code>code_prefix</code> 分片机制（<code>app/tasks/indicator.py:56-76</code>）投 Celery；③ <code>paper_trade_auto</code> 改事件驱动（等 <code>signal_generation</code> 的 etl_log success，而非等锁）。
+<strong>验证</strong>：生产 etl_log 统计 <code>signal_generation</code> 的 duration_seconds 分布；改造后对比。</p>
+<h3 id="p1-3-auto_trade_from_signals-n1-http">P1-3 <code>auto_trade_from_signals</code> 循环内 N+1 + 每信号一次外部行情 HTTP + 静默吞异常</h3>
+<p><strong>问题</strong>：每个账户对当日<strong>全部</strong>信号逐条处理；每条 BUY 都 <code>get_positions(account_id)</code>（全量查询）+ <code>_get_current_price</code>（provider 实时行情，单标的外部 HTTP）；SELL 逐条查持仓。调度侧循环 <code>except Exception: continue</code> <strong>无任何日志</strong>。
+<strong>证据</strong>：<code>app/services/paper_trading_service.py:661-704</code>（循环）、<code>paper_trading_service.py:748-759</code>（单标的行情）；<code>app/core/scheduler.py:1321-1328</code>（静默 continue）。
+<strong>影响</strong>：数百条 BUY 信号 = 数百次串行 HTTP + 2N 次 SQL，跨账户重复执行；任何失败（配额、超时、下架币）零可观测。
+<strong>建议</strong>：账户持仓一次载入并增量维护；价格改批量 quotes（provider 已支持列表入参）；调度循环至少 <code>logger.exception</code>。
+<strong>验证</strong>：日志中统计单次 <code>paper_trade_auto</code> 的行情调用次数；注入异常验证有告警。</p>
+<h3 id="p1-4-cninfo_pdf-cninfo">P1-4 cninfo_pdf 与巨潮日报共享 cninfo 队列，重提取会饿死时效任务</h3>
+<p><strong>问题</strong>：PDF 文本提取（长 CPU/IO，生产语料 14GB）与 17:00 定期报告日刷同在 <code>cninfo</code> 队列（worker 并发 2）。
+<strong>证据</strong>：<code>app/core/celery_app.py:55-60</code>（路由表）；<code>app/tasks/cninfo_pdf.py:10</code>（自述共享队列）、<code>:46</code>、<code>:290</code>（任务定义）。
+<strong>影响</strong>：大批 PDF 回填期间，17:00 <code>cninfo_reports_daily</code> 排队延迟，次日早间研报链路（摘要/日报）连锁滞后；反向亦然。
+<strong>建议</strong>：拆 <code>cninfo_pdf</code> 独立队列 + 独立 worker（或 <code>worker_concurrency</code> 隔离）；保持 <code>task_acks_late</code>。
+<strong>验证</strong>：ECS 上 <code>celery inspect active_queues</code> 观察两类任务争抢；拆分后日报刷新耗时不随 PDF 批量波动。</p>
+<hr />
+<h2 id="p2">四、P2 发现</h2>
+<h3 id="p2-1-signal-trade_date">P2-1 <code>signal</code> 表缺 <code>trade_date</code> 单列索引</h3>
+<p><code>WHERE trade_date = :d ORDER BY created_at</code>（<code>paper_trading_service.py:649-653</code>，auto-trade 每日高频）只能全扫：现有索引为 <code>(etf_code, trade_date)</code> 复合（leading 不匹配）与 <code>created_at.desc()</code>；唯一约束 leading 是 <code>strategy_id</code>（<code>app/models/etl.py:187-194</code>）。signal 表日增万级行。建议 alembic 加 <code>ix_signal_trade_date (trade_date)</code>（可含 created_at 第二列）。验证：<code>EXPLAIN ANALYZE</code> 前后对比。</p>
+<h3 id="p2-2-sse">P2-2 全局请求限流缺失；SSE 匿名端点无参数与连接上限</h3>
+<p>限流仅覆盖 login/change-password（<code>app/api/v1/auth.py:151,216</code>），其余 API 无 rate limit（20260701 审计遗留）。<code>/api/v1/stream/prices</code>（<code>app/api/v1/stream.py:320-334</code>）设计为匿名公开，但 <code>codes</code> 数量无上限（一条连接可携带任意多 code → IN 查询放大），连接数无上限，每 3s 一次 DB 查询、300s 生命周期。建议：SSE codes 截断（如 ≤50）+ 全局 slowapi/中间件级限流（至少对匿名端点）。</p>
+<h3 id="p2-3-http">P2-3 回测在 HTTP 请求内同步执行引擎</h3>
+<p><code>POST /backtests</code>（<code>app/api/v1/backtests.py:27-45</code>）与 cross_sectional（<code>:78-100+</code>）直接在请求线程跑完整引擎（多年历史 × 多标的），分钟级占用 worker 线程 + DB 连接（pool 15/30）。个人平台可接受，但与 pool_timeout=10 的"快速失败"策略相互作用：并发回测易触发排队 504。建议：改 Celery/BackgroundTasks + 轮询结果（digest regenerate 的 202+轮询模式可复用，<code>app/api/v1/digest.py:176-207</code> 是现成范本）。</p>
+<h3 id="p2-4-newspy-1500-24-orm">P2-4 <code>news.py</code> 路由 1500 行、24 处直查 ORM：分层债务最大户</h3>
+<p>news 路由内嵌市场过滤扩展、ILIKE 全文搜索、关联子查询、序列化、健康面板等完整业务逻辑（<code>app/api/v1/news.py:268-430</code> 等）。次要：<code>stats.py</code> 13 处、<code>learning.py</code>/<code>search_trends.py</code> 各 6 处（auth/admin_users 的直查属合理例外）。建议：抽 <code>NewsQueryService</code>，路由只做参数校验与响应组装；新增端点立规矩"先进 service"。</p>
+<h3 id="p2-5-etl_statuspy-21-job">P2-5 <code>etl_status.py</code> 运维面板每请求 21 次逐 job 查询</h3>
+<p><code>_build_task_summary</code> 对 21 个 tracked job 逐个 <code>ORDER BY created_at DESC LIMIT 1</code>（<code>app/api/v1/etl_status.py:73-80</code>），是教科书式 N+1（有 <code>idx_etl_logs_job</code> 支撑、量小可忍）。建议：窗口函数 <code>ROW_NUMBER() OVER (PARTITION BY job_name ORDER BY created_at DESC)</code> 一次取全。</p>
+<h3 id="p2-6">P2-6 美股历史回填覆盖策略仍依赖配额轮询</h3>
+<p><code>us_historical_backfill</code> 每小时跑、每轮 ~15 只（<code>app/core/scheduler.py:508-529</code>），569 只美股全量轮转周期以周计；Tiingo 免费层 50 req/h 限制未变（20260718 P1-5 遗留）。日终主链路已改 FMP 主 + Tiingo 兜底（<code>scheduler.py:483-505</code> docstring），属部分改善。建议：持久化"缺口标的"清单按需回填，而非匀速轮转。</p>
+<hr />
+<h2 id="p3">五、P3 发现（低危 / 卫生类）</h2>
+<ol>
+<li><strong>print 与 logging 混用</strong>：非测试代码 232 处 <code>print(</code>，<code>scheduler.py</code> 全量使用 print（含告警语义的 <code>⚠️ [SCHEDULER_WARN]</code>），docker logs 可检索但无级别/无结构化。建议统一 <code>logging</code>。</li>
+<li><strong><code>@cached</code> 装饰器是死代码且键设计有缺陷</strong>：<code>app/core/cache.py:88-121</code> 全仓零使用；且默认键含 <code>*args</code>（服务方法即 <code>self</code>，<code>str(self)</code> 带内存地址 → 永不命中），也未走容错路径。要么删除，要么修键策略（仅用显式 <code>key_func</code>）。</li>
+<li><strong><code>RiskRule</code> 表仍无消费者</strong>：动态风控规则表只有只读 list 端点（<code>app/api/v1/live_trading.py:534-541</code>），<code>risk_control.py</code> 全部读 <code>LiveTradeConfig</code> 硬编码（20260701 #9 的残留半边）。</li>
+<li><strong><code>ETFCorporateAction</code> 孤儿表</strong>：全仓仅模型定义，无 pipeline 写入/读取（复权因子现已走 Tushare <code>adj_factor</code> + 周日回填 + yfinance 推导，公司行为表失去存在必要，建议删表或补写入方）。</li>
+<li><strong><code>redis_lock</code> token 用 <code>time.time()</code></strong>（<code>app/core/redis_client.py:57</code>）：非随机 token，同一微秒双进程可互相删除对方的锁（概率极低）；换 <code>uuid4().hex</code> 一行事。</li>
+<li><strong>repositories 层名存实亡</strong>：仅 <code>price_repository.py</code> 被 5 个 service 使用，AGENTS.md 的"api→services→models/data.repositories"与现实漂移；建议要么明确 repositories 只服务行情读取，要么从文档移除该层。</li>
+<li><strong>FRED 手动刷新同步执行</strong>（<code>app/api/v1/macro.py:152-173</code>，admin-only，分钟级 HTTP）；对比 digest regenerate 已是线程 + 202 + 轮询的范本。</li>
+<li><strong><code>ETFService.upsert_holdings</code> 匹配键与唯一约束不一致</strong>：按 <code>(etf_code, holding_code, holdings_as_of_date)</code> 查重（<code>app/services/etf_service.py:768-777</code>），而表唯一约束是 <code>(etf_code, snapshot_date, holding_code)</code>（<code>app/models/etf.py:340-346</code>）——两列由 ETL 保持同步所以现状能跑，但重放/并发下可能撞约束，建议统一走 snapshot_date。</li>
+</ol>
+<hr />
+<h2 id="_2">六、历史问题核对表</h2>
+<p>对照 <code>20260701-platform-logic-audit.md</code>（14 项 P0 + 运维项）、<code>20260718-platform-indicator-audit-report.md</code>、<code>20260718-data-integrity-audit.md</code> 逐项核实现状（"已修复"均给出本轮证据位置）：</p>
+<table>
+<thead>
+<tr>
+<th>#</th>
+<th>历史问题</th>
+<th>现状</th>
+<th>证据（本轮核实）</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td>ETFInfo dataclass 缺 sector/industry/list_date → TypeError</td>
+<td><strong>已修复</strong></td>
+<td><code>app/data/providers/base.py:20-23</code> 字段齐备</td>
+</tr>
+<tr>
+<td>2</td>
+<td>A 股 ETF ETL 未按 instrument_type 过滤</td>
+<td><strong>已修复</strong></td>
+<td><code>app/data/pipelines/a_share.py:45</code></td>
+</tr>
+<tr>
+<td>3</td>
+<td>Binance change_pct 用 high 计算</td>
+<td><strong>已修复</strong></td>
+<td><code>app/data/providers/binance_provider.py:316-322</code>（prev-close 基准，含注释）</td>
+</tr>
+<tr>
+<td>4</td>
+<td>upsert 丢弃合法零值</td>
+<td><strong>已修复</strong></td>
+<td><code>a_share.py:139-152</code>（cols_with_data 只剔全 NULL 列，0 值保留）</td>
+</tr>
+<tr>
+<td>5</td>
+<td>回测交易成本模型错误</td>
+<td><strong>已修复</strong></td>
+<td><code>app/services/backtest_engine.py:176-217</code>（名义金额计费、A股卖出印花税、¥5 最低佣金）</td>
+</tr>
+<tr>
+<td>6</td>
+<td>回测信号用复权价、成交用 raw close</td>
+<td>未逐行复核</td>
+<td>指标层已统一 qfq（20260718 验证），回测成交价未在本轮范围内核对</td>
+</tr>
+<tr>
+<td>7</td>
+<td>信号去重 seen_keys 永不命中</td>
+<td><strong>已修复</strong></td>
+<td><code>app/services/signal_service.py:38-44</code>（key 含 type）</td>
+</tr>
+<tr>
+<td>8</td>
+<td>模拟交易胜率占位</td>
+<td><strong>已修复</strong></td>
+<td><code>paper_trading_service.py:513-546</code>（FIFO 成本配对）</td>
+</tr>
+<tr>
+<td>9</td>
+<td>真实交易下单/撤单仅需普通登录</td>
+<td><strong>已修复</strong></td>
+<td><code>live_trading.py:359-366 / 461-466 / 519-523</code>（require_admin）；RiskRule 半边残留见 P3-3</td>
+</tr>
+<tr>
+<td>10</td>
+<td>风控日盈亏累计全部历史</td>
+<td><strong>已修复</strong></td>
+<td><code>app/services/risk_control.py:189-205</code>（按今日 updated_at 过滤 + 时区说明）</td>
+</tr>
+<tr>
+<td>11</td>
+<td>return_1w 等窗口 off-by-one</td>
+<td><strong>已修复</strong></td>
+<td><code>app/data/indicators/risk.py:163</code>（窗口映射表）</td>
+</tr>
+<tr>
+<td>12</td>
+<td>CORS <code>allow_origins=["*"]</code> + credentials</td>
+<td><strong>已修复</strong></td>
+<td><code>app/main.py:104-120</code>（env 驱动、wildcard 时禁 credentials）</td>
+</tr>
+<tr>
+<td>13</td>
+<td>SECRET_KEY 弱默认值</td>
+<td><strong>已修复</strong></td>
+<td><code>app/config.py:27-52, 302-352</code>（已知弱值清单 + 非 dev 拒启）</td>
+</tr>
+<tr>
+<td>14</td>
+<td>Scheduler 模块导入即启动（多 worker 重复）</td>
+<td><strong>已修复</strong></td>
+<td><code>app/main.py:426-485</code>（startup event + flock + ENABLE_SCHEDULER）</td>
+</tr>
+<tr>
+<td>15</td>
+<td>CronTrigger 未指定时区</td>
+<td><strong>已修复</strong></td>
+<td><code>scheduler.py</code> 全部显式 <code>timezone="Asia/Shanghai"/"UTC"</code></td>
+</tr>
+<tr>
+<td>16</td>
+<td>Job 失败仅打印日志、无告警</td>
+<td><strong>部分修复</strong></td>
+<td>有 etl_log 面板 + freshness 告警页 + internal watchdog（20260723）；集中通知（如备份失败接 watchdog）仍待接（memory 20260822）</td>
+</tr>
+<tr>
+<td>17</td>
+<td>无请求限流</td>
+<td><strong>仍存在</strong></td>
+<td>仅 login/改密限流（auth.py:151,216），见 P2-2</td>
+</tr>
+<tr>
+<td>18</td>
+<td>无审计日志表</td>
+<td><strong>已修复</strong></td>
+<td><code>audit_log</code> 模型 + <code>app/core/audit.py</code> + admin_users 4 处 <code>record_audit</code></td>
+</tr>
+<tr>
+<td>19</td>
+<td>ATR 用 SMA 非 Wilder 平滑</td>
+<td>未复核</td>
+<td>本轮未比对</td>
+</tr>
+<tr>
+<td>20</td>
+<td>Crypto seed 列表与 provider 默认不一致</td>
+<td>未复核</td>
+<td>—</td>
+</tr>
+<tr>
+<td>21</td>
+<td>Crypto ETL 时区 bug / 从未写日志</td>
+<td><strong>已修复</strong></td>
+<td><code>crypto_daily_etl</code> job 在册（scheduler.py:1642-1649），docstring 记录 Binance failover 上下文</td>
+</tr>
+<tr>
+<td>22</td>
+<td>美股 21 天无成功记录</td>
+<td><strong>已恢复</strong></td>
+<td><code>us_daily_etl</code> 05:00 在册，FMP 主源 + Tiingo/yfinance 兜底</td>
+</tr>
+<tr>
+<td>23</td>
+<td>ETL stuck 无清理</td>
+<td><strong>已修复（有新边界）</strong></td>
+<td>每小时 :45 + 启动清理（scheduler.py:216-279, 2561-2568）；新引入阈值冲突见 P1-1</td>
+</tr>
+<tr>
+<td>24</td>
+<td>指标目标日期无法发现数据停滞</td>
+<td><strong>部分修复</strong></td>
+<td><code>_resolve_a_share_target_date</code> 滞后 &gt;2 天仅打 warning（scheduler.py:169-183），未接主动告警</td>
+</tr>
+<tr>
+<td>25</td>
+<td>yfinance batch adj_factor=1.0</td>
+<td><strong>已修复</strong></td>
+<td>20260718 报告确认（Adj Close/Close 推导），本轮未重验代码</td>
+</tr>
+<tr>
+<td>26</td>
+<td>评分风险维度符号 / 按市场取最新日 / rank_category 失效</td>
+<td><strong>已修复</strong></td>
+<td>20260718 修复 + 7-19 生产验证（覆盖 86%）；<code>scoring_service.py:181-221</code> 现为按市场分组</td>
+</tr>
+<tr>
+<td>27</td>
+<td>板块轮动 RS 反转 / 信号窗口</td>
+<td><strong>已修复</strong></td>
+<td>20260718 Phase 2.11（差值 + 5 交易日）</td>
+</tr>
+<tr>
+<td>28</td>
+<td>资金流默认日期/过滤失效</td>
+<td><strong>已修复</strong></td>
+<td>20260718 Phase 1.7</td>
+</tr>
+<tr>
+<td>29</td>
+<td>APScheduler misfire 默认 1s 丢 tick（20260727 P0）</td>
+<td><strong>已修复</strong></td>
+<td><code>scheduler.py:79-82</code>（grace 300s + coalesce + hourly jitter=600）</td>
+</tr>
+<tr>
+<td>30</td>
+<td>首登强制改密（20261024 基线）</td>
+<td><strong>已落地，质量好</strong></td>
+<td><code>deps.py:85-135</code>（403 门禁 + jti 黑名单 + must_change_password 白名单端点）、<code>auth.py:199-267</code>（改密轮换全部 refresh token）；作为本轮新代码质量参照</td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<p>附注（仍存在但属产品取舍）：港股/日股 discovery/ETL pipeline 至今未建（20260701 §3.2 提及，<code>app/data/pipelines/</code> 无 hk/jp 管线）；点-in-time 基本面与无幸存者偏差回测（20260701 P2 战略项）未启动。</p>
+</blockquote>
+<hr />
+<h2 id="runbook">七、值得沉淀为 runbook / 口诀的知识点（只列清单，落库由主会话策展）</h2>
+<ol>
+<li><strong>"投递 ≠ 完成"</strong>：调度器把 Celery 任务 <code>.delay()</code> 出去后 with 块结束即放锁；下游任务要等<strong>完成信号</strong>（etl_log success / 日期锁消失），不能按调度时刻推算顺序。（P0-1 的根因）</li>
+<li><strong>"清理阈值必须 ≥ 最长合法运行，且按 job 分级"</strong>：stuck 清理是护栏不是闹钟；上清理机制前先枚举每个 job 的合法时长上限（信号 4h、指标 6h、adj_factor 4h vs 默认 2h）。（P1-1）</li>
+<li><strong>"横截面计算前先验 universe 覆盖率"</strong>：排名/百分位类计算对缺失行敏感，读"最新日期"前先比对行数与基数，不足则推迟。（P0-1 的防御性口诀）</li>
+<li><strong>"队列即并发预算"</strong>：重提取（PDF）与时效任务（17:00 日报）不共队列；worker 并发数是预算不是默认值。（P1-4）</li>
+<li><strong>"router 直查 DB 的面积要有预算"</strong>：新端点先问能否进 service；news.py 是 1500 行演化失控的样本，治理从"不再增长"开始。（P2-4）</li>
+<li><strong>"缓存装饰器的键别含 self/ORM 对象"</strong>：<code>str(self)</code> 带内存地址 → 永不命中；键必须来自显式 key_func。（P3-2）</li>
+<li><strong>"SSE/长连接三件套"</strong>：session 不跨 yield、同步查询丢线程池、请求参数（codes 数）与连接数都要设上限——本项目已做到前两条，缺第三条。（P2-2）</li>
+<li><strong>"锁 token 必须随机"</strong>：<code>redis_lock</code> 用时间戳做 token 属侥幸正确，uuid4 才是标准姿势。（P3-5）</li>
+</ol>
+<hr />
+<h2 id="_3">八、本轮摸底未覆盖 / 建议下轮补查</h2>
+<ul>
+<li>回测引擎是否全程使用 adj_close 成交（历史 #6 未复核）</li>
+<li><code>app/services/news/scheduler_jobs.py</code>（1921 行）的 170+ 源 job 内部实现质量（本轮只验证了 drain/importance gate/超时配置存在且与 memory 记录一致）</li>
+<li>alembic 迁移与 models 的一致性（<code>adj_factor_history</code> 在 models/etf.py:185 与 :231 出现两处 Index 声明样貌，建议下轮核对是否历史遗留重复定义）</li>
+<li>港股/日股管线取舍的产品决策</li>
+<li><code>pytest --collect-only</code> 收集健康度与 e2e 覆盖（CI 已有 1000+ 用例，本轮未跑）</li>
+</ul>
+<p><em>本报告为只读摸底产物，未修改任何源代码；md + html 双格式落盘。</em></p>
+<p style="color:#8b949e;font-size:.85em;margin-top:3em">AlloyResearch 后端健康度摸底 · 2026-10-25 · md + html 双格式落盘 · 由只读摸底 agent 生成</p>
+</body>
+</html>
