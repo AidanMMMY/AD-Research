@@ -31,6 +31,32 @@ class RefreshRequest(BaseModel):
     refresh_token: str
 
 
+# ── Self-service registration (2026-10-25 design §3.2) ──
+# Field formats (email regex / username ^[a-zA-Z0-9_]{3,30}$ / password
+# policy) are enforced in the endpoints via app.services.password_policy
+# and app.services.registration_service so all paths share one rule.
+
+
+class RegisterRequest(BaseModel):
+    email: str
+    username: str
+    password: str
+
+
+class VerifyRegistrationRequest(BaseModel):
+    email: str
+    code: str
+
+
+class ResendVerificationRequest(BaseModel):
+    email: str
+
+
+class CheckUsernameResponse(BaseModel):
+    available: bool
+    suggestions: list[str] | None = None
+
+
 class ChangePasswordRequest(BaseModel):
     """Self-service password change for the logged-in user."""
 

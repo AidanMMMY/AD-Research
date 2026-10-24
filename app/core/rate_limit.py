@@ -70,17 +70,13 @@ def check_login_rate_limit(
         retry_after = 1
 
         if ip:
-            count, ttl = _incr_with_ttl(
-                f"rl:login:ip:{ip}", _IP_WINDOW_SECONDS
-            )
+            count, ttl = _incr_with_ttl(f"rl:login:ip:{ip}", _IP_WINDOW_SECONDS)
             if count > _IP_LIMIT:
                 return False, ttl
             retry_after = max(retry_after, ttl)
 
         if username:
-            count, ttl = _incr_with_ttl(
-                f"rl:login:user:{username.lower()}", _USER_WINDOW_SECONDS
-            )
+            count, ttl = _incr_with_ttl(f"rl:login:user:{username.lower()}", _USER_WINDOW_SECONDS)
             if count > _USER_LIMIT:
                 return False, ttl
             retry_after = max(retry_after, ttl)
@@ -106,3 +102,82 @@ def clear_login_attempts(username: str | None) -> None:
         client.delete(f"rl:login:user:{username.lower()}")
     except Exception:  # pragma: no cover — best-effort cleanup
         pass
+
+
+# ── Self-registration rate limits (2026-10-25 design §3.2) ──
+#
+# register / resend:  5 / IP / hour + 3 / email / hour, plus a 60s
+#                     per-email resend cooldown (check-and-set)
+# verify:            10 / email / hour (brute-force budget on the OTP)
+#
+# Same fail-open contract as the login limiter: a Redis outage must not
+# lock legitimate signups out.
+
+_REG_IP_LIMIT = 5
+_REG_IP_WINDOW_SECONDS = 3600
+_REG_EMAIL_LIMIT = 3
+_REG_EMAIL_WINDOW_SECONDS = 3600
+_VERIFY_EMAIL_LIMIT = 10
+_VERIFY_EMAIL_WINDOW_SECONDS = 3600
+_RESEND_COOLDOWN_SECONDS = 60
+
+
+def _hit(key: str, limit: int, window_seconds: int) -> tuple[bool, int]:
+    """Fixed-window guard: increments ``key`` and reports allowance.
+
+    Returns ``(allowed, retry_after_seconds)``. Fail-open when Redis is
+    unreachable.
+    """
+    try:
+        count, ttl = _incr_with_ttl(key, window_seconds)
+        return count <= limit, ttl
+    except Exception as exc:  # pragma: no cover — Redis outage path
+        logger.warning("rate-limit Redis unavailable, failing open: %s", exc)
+        return True, 1
+
+
+def check_register_rate_limit(ip: str | None, email: str | None) -> tuple[bool, int]:
+    """Guard for POST /auth/register and /auth/resend-verification."""
+    retry_after = 1
+    if ip:
+        allowed, ttl = _hit(f"rl:register:ip:{ip}", _REG_IP_LIMIT, _REG_IP_WINDOW_SECONDS)
+        if not allowed:
+            return False, ttl
+        retry_after = max(retry_after, ttl)
+    if email:
+        allowed, ttl = _hit(
+            f"rl:register:email:{email.lower()}", _REG_EMAIL_LIMIT, _REG_EMAIL_WINDOW_SECONDS
+        )
+        if not allowed:
+            return False, ttl
+        retry_after = max(retry_after, ttl)
+    return True, retry_after
+
+
+def check_verify_rate_limit(email: str | None) -> tuple[bool, int]:
+    """Guard for POST /auth/verify-registration (brute-force budget)."""
+    if not email:
+        return True, 1
+    return _hit(
+        f"rl:verify:email:{email.lower()}", _VERIFY_EMAIL_LIMIT, _VERIFY_EMAIL_WINDOW_SECONDS
+    )
+
+
+def arm_resend_cooldown(email: str | None) -> tuple[bool, int]:
+    """Check-and-set the 60s per-email resend cooldown.
+
+    Returns ``(allowed, retry_after_seconds)``. Arming happens at the same
+    moment the email is dispatched (registration or resend), which is what
+    the frontend's 60-second countdown expects. Fail-open without Redis.
+    """
+    if not email:
+        return True, 0
+    key = f"rl:resend:cooldown:{email.lower()}"
+    try:
+        client = get_redis_client()
+        if client.set(key, "1", nx=True, ex=_RESEND_COOLDOWN_SECONDS):
+            return True, 0
+        return False, max(1, client.ttl(key) or _RESEND_COOLDOWN_SECONDS)
+    except Exception as exc:  # pragma: no cover — Redis outage path
+        logger.warning("resend cooldown Redis unavailable, failing open: %s", exc)
+        return True, 0

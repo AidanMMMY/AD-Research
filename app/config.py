@@ -58,33 +58,39 @@ class Settings(BaseSettings):
     tushare_token: str = ""
 
     # US market data providers (free tiers sufficient for hobby use)
-    finnhub_api_key: str = ""   # https://finnhub.io/register (60 req/min free)
-    tiingo_api_key: str = ""    # https://www.tiingo.com/account/token (1k/day free)
-    fmp_api_key: str = ""       # https://site.financialmodelingprep.com (250/day free)
+    finnhub_api_key: str = ""  # https://finnhub.io/register (60 req/min free)
+    tiingo_api_key: str = ""  # https://www.tiingo.com/account/token (1k/day free)
+    fmp_api_key: str = ""  # https://site.financialmodelingprep.com (250/day free)
 
     # Macro data (free with registration, takes ~2 minutes)
-    fred_api_key: str = ""     # https://fred.stlouisfed.org/docs/api/api_key.html (US macro: GDP/CPI/unemployment/yields)
-    bls_api_key: str = ""      # https://data.bls.gov/registrationEngine/ (optional — public API works w/o key but rate-limited)
-    bea_api_key: str = ""      # https://apps.bea.gov/API/signup/ (optional — same as BLS)
+    fred_api_key: str = (
+        ""  # https://fred.stlouisfed.org/docs/api/api_key.html (US macro: GDP/CPI/unemployment/yields)
+    )
+    bls_api_key: str = (
+        ""  # https://data.bls.gov/registrationEngine/ (optional — public API works w/o key but rate-limited)
+    )
+    bea_api_key: str = ""  # https://apps.bea.gov/API/signup/ (optional — same as BLS)
 
     # Binance / Crypto (public REST endpoints do not require API key)
-    binance_api_key: str = ""        # https://www.binance.com/en/my/settings/api-management
-    binance_api_secret: str = ""      # Needed only for account/trading endpoints (Phase 3)
+    binance_api_key: str = ""  # https://www.binance.com/en/my/settings/api-management
+    binance_api_secret: str = ""  # Needed only for account/trading endpoints (Phase 3)
 
     # Binance trading (Phase 3 – live trading)
     # Testnet: https://testnet.binance.vision/
     # Production: https://www.binance.com/
-    binance_testnet_key: str = ""          # Testnet API key
-    binance_testnet_secret: str = ""        # Testnet API secret
-    binance_trading_enabled: bool = False   # Master switch — must be True for live orders
-    binance_max_order_value_usdt: float = 100.0   # Max USDT per single order
-    binance_max_daily_loss_usdt: float = 500.0     # Max daily realised loss before circuit-breaker
-    binance_max_daily_orders: int = 20              # Max orders per calendar day
-    binance_market_order_slippage: float = 0.001    # Slippage buffer for MARKET order risk checks (0.1%)
+    binance_testnet_key: str = ""  # Testnet API key
+    binance_testnet_secret: str = ""  # Testnet API secret
+    binance_trading_enabled: bool = False  # Master switch — must be True for live orders
+    binance_max_order_value_usdt: float = 100.0  # Max USDT per single order
+    binance_max_daily_loss_usdt: float = 500.0  # Max daily realised loss before circuit-breaker
+    binance_max_daily_orders: int = 20  # Max orders per calendar day
+    binance_market_order_slippage: float = (
+        0.001  # Slippage buffer for MARKET order risk checks (0.1%)
+    )
 
     # AI / LLM — 主链路是 MiniMax（provider 直接读 MINIMAX_API_KEY /
     # MINIMAX_CN_API_KEY env）；DeepSeek 仅作 legacy 回滚路径保留。
-    deepseek_api_key: str = ""   # legacy rollback: https://platform.deepseek.com/
+    deepseek_api_key: str = ""  # legacy rollback: https://platform.deepseek.com/
 
     # Per-user daily cap on the research-reports "生成摘要" on-demand
     # endpoint. Counted in Redis with a 24h TTL keyed by user + date.
@@ -201,10 +207,10 @@ class Settings(BaseSettings):
     sec_user_agent: str = "AlloyResearch research@alloy-research.local"
 
     # News crawler tuning
-    xueqiu_per_minute: int = 30           # Per-instance rate limit
-    xueqiu_batch_size: int = 50           # Symbols per scheduler tick
-    xueqiu_posts_per_symbol: int = 20     # Posts per timeline page
-    xueqiu_user_cache_ttl_days: int = 7   # How long to keep user profiles
+    xueqiu_per_minute: int = 30  # Per-instance rate limit
+    xueqiu_batch_size: int = 50  # Symbols per scheduler tick
+    xueqiu_posts_per_symbol: int = 20  # Posts per timeline page
+    xueqiu_user_cache_ttl_days: int = 7  # How long to keep user profiles
 
     # WeChat RSS via wewe-rss (self-hosted). When ``wechat_rss_base_url``
     # is unset / unreachable the WeChat crawler is a silent no-op so the
@@ -212,7 +218,7 @@ class Settings(BaseSettings):
     # the comma-separated list of feed ids to subscribe to (one per
     # WeChat public account); see docs/dev-notes/20260704-wechat-rss-integration.md.
     wechat_rss_base_url: str = "http://localhost:4000"
-    wechat_rss_feed_id: str = ""          # e.g. "MP_WXS_1234567890" (泽平宏观)
+    wechat_rss_feed_id: str = ""  # e.g. "MP_WXS_1234567890" (泽平宏观)
     # Optional per-feed identity map so posts from different WeChat
     # accounts get distinct ``source`` names instead of the shared
     # "wechat_zeping". Format: "feed_id:slug:display_name,..." — the
@@ -249,8 +255,8 @@ class Settings(BaseSettings):
     digest_primary_username: str = "aidan"
 
     # Deployment dashboard (Vercel-like admin page)
-    github_token: str = ""          # GitHub personal access token for Actions API
-    github_repo: str = ""           # e.g. "owner/repo-name"
+    github_token: str = ""  # GitHub personal access token for Actions API
+    github_repo: str = ""  # e.g. "owner/repo-name"
     deploy_docker_socket: str = "/var/run/docker.sock"
 
     # CORS: comma-separated list of allowed origins. Empty falls back to a
@@ -258,6 +264,11 @@ class Settings(BaseSettings):
     # CORS_ORIGINS to the exact frontend origin(s) — never use "*" with
     # credentials.
     cors_origins: str = ""
+
+    # Frontend base URL (self-registration, 2026-10-25): the magic-link
+    # email button and the /auth/verify-link 302 both target this origin
+    # (/register/verify route). Override in production with FRONTEND_BASE_URL.
+    frontend_base_url: str = "http://localhost:5173"
 
     # Constants
     api_v1_prefix: str = "/api/v1"
@@ -312,6 +323,11 @@ class AuthSettings(BaseSettings):
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24  # 1 day
     ADMIN_USERNAME: str = "admin"
     ADMIN_PASSWORD: str = ""
+    # Self-registration master switch (2026-10-25). Default off: flip it
+    # only after walking the full email → verify → login flow once. When
+    # off, POST /auth/register 404s and the unverified-email login gate is
+    # inactive, so existing deployments behave exactly as before.
+    REGISTRATION_ENABLED: bool = False
 
     model_config = SettingsConfigDict(
         env_prefix="AUTH_",
@@ -373,7 +389,7 @@ class AuthSettings(BaseSettings):
         if len(value) < 32:
             raise RuntimeError(
                 "AUTH_SECRET_KEY is too short (< 32 chars). Use a high-entropy "
-                "random string such as `python -c \"import secrets; print(secrets.token_urlsafe(48))\"`."
+                'random string such as `python -c "import secrets; print(secrets.token_urlsafe(48))"`.'
             )
         return value
 
@@ -399,10 +415,10 @@ auth_settings = AuthSettings()
 class PushSettings(BaseSettings):
     """APNs & push notification configuration."""
 
-    apns_key_path: str = ""       # Path to .p8 private key
-    apns_key_id: str = ""         # Key ID from Apple Developer
-    apns_team_id: str = ""        # Apple Developer Team ID
-    apns_topic: str = ""          # App Bundle ID
+    apns_key_path: str = ""  # Path to .p8 private key
+    apns_key_id: str = ""  # Key ID from Apple Developer
+    apns_team_id: str = ""  # Apple Developer Team ID
+    apns_topic: str = ""  # App Bundle ID
     apns_use_sandbox: bool = True  # Use sandbox for dev, production for release
 
     model_config = SettingsConfigDict(

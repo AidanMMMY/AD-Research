@@ -7,6 +7,10 @@ Token model:
 Blacklist:
   - On logout, the access token's jti is written to Redis with TTL = remaining lifetime
   - get_current_user checks the blacklist on every authenticated request
+
+Self-registration (2026-10-25 design §3): /register, /verify-registration,
+/resend-verification, /check-username, /verify-link plus an
+unverified-email login gate. Gated by AUTH_REGISTRATION_ENABLED.
 """
 
 import hashlib
@@ -15,18 +19,26 @@ import secrets
 import uuid
 from collections.abc import Generator
 from datetime import UTC, datetime, timedelta
+from urllib.parse import urlencode
 
 import bcrypt
 from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi.responses import JSONResponse, RedirectResponse
 from jose import jwt
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_current_user, get_current_user_allow_password_change
-from app.config import auth_settings
+from app.config import auth_settings, get_settings
 from app.core.audit import client_ip_from_headers
 from app.core.database import SessionLocal
 from app.core.log_sanitize import sanitize
-from app.core.rate_limit import check_login_rate_limit, clear_login_attempts
+from app.core.rate_limit import (
+    arm_resend_cooldown,
+    check_login_rate_limit,
+    check_register_rate_limit,
+    check_verify_rate_limit,
+    clear_login_attempts,
+)
 from app.core.redis_client import blacklist_token
 from app.models.refresh_token import RefreshToken
 from app.models.user import User
@@ -34,15 +46,21 @@ from app.models.user_device import UserDevice
 from app.schemas.auth import (
     ChangePasswordRequest,
     ChangePasswordResponse,
+    CheckUsernameResponse,
     DeviceResponse,
     LoginRequest,
     LoginResponse,
     RefreshRequest,
     RefreshResponse,
     RegisterDeviceRequest,
+    RegisterRequest,
+    ResendVerificationRequest,
     UserResponse,
+    VerifyRegistrationRequest,
 )
+from app.services import registration_service
 from app.services.password_policy import validate_password
+from app.services.registration_service import CodeExpiredError, CodeInvalidError
 
 logger = logging.getLogger(__name__)
 
@@ -92,6 +110,13 @@ def _generate_refresh_token() -> str:
 def _generate_jti() -> str:
     """Unique identifier for JWT revocation."""
     return uuid.uuid4().hex
+
+
+def _client_ip(http_request: Request) -> str | None:
+    """Resolve the caller IP the same way /login does (XFF first)."""
+    return client_ip_from_headers(dict(http_request.headers)) or (
+        http_request.client.host if http_request.client else None
+    )
 
 
 # ── Token creation / verification ──
@@ -145,9 +170,7 @@ def login(request: LoginRequest, http_request: Request, db: Session = Depends(_g
     and 20 / username / hour. Exceeding either window returns 429 with
     a ``Retry-After`` header.
     """
-    client_ip = client_ip_from_headers(dict(http_request.headers)) or (
-        http_request.client.host if http_request.client else None
-    )
+    client_ip = _client_ip(http_request)
     allowed, retry_after = check_login_rate_limit(client_ip, request.username)
     if not allowed:
         logger.warning(
@@ -170,6 +193,18 @@ def login(request: LoginRequest, http_request: Request, db: Session = Depends(_g
     if not user.is_active:
         raise HTTPException(status_code=401, detail="User is inactive")
 
+    # Self-registration gate (2026-10-25): an account whose email has not
+    # been verified yet cannot log in while registration is enabled. The
+    # detail string is a frontend contract — it must stay distinct from
+    # the must_change_password 403 ("请先修改密码后再访问") so clients can
+    # route to the right page.
+    if auth_settings.REGISTRATION_ENABLED and user.email and user.email_verified_at is None:
+        logger.warning(
+            "Login blocked, email not verified: %s",
+            sanitize(f"username={request.username} ip={client_ip}"),
+        )
+        raise HTTPException(status_code=403, detail="email not verified")
+
     # Successful login — clear the per-user counter so the user doesn't
     # carry forward a near-limit count from earlier wrong-password tries.
     clear_login_attempts(user.username)
@@ -188,6 +223,225 @@ def login(request: LoginRequest, http_request: Request, db: Session = Depends(_g
             must_change_password=user.must_change_password,
         ),
     )
+
+
+# ── Self-service registration (2026-10-25 design §3.2) ──
+#
+# API contract (shared with the web frontend; do not change unilaterally):
+#   POST /register            201 {"detail":"verification email sent"}
+#                             username taken → 400 "username already taken";
+#                             email registered → same 201 (anti-enumeration)
+#   POST /verify-registration 200 LoginResponse-shape (auto login)
+#                             wrong code → 400 {"detail":"invalid code",
+#                             "remaining_attempts":n}; expired/voided → 410
+#   POST /resend-verification 202 {"detail":"resent"}; cooldown → 429
+#                             {"detail":"cooldown"}; unknown email → 202
+#   GET  /check-username      200 {"available":bool,"suggestions":[...]|null}
+#   GET  /verify-link         302 → {FRONTEND_BASE}/register/verify?verified=…
+
+
+@router.post("/register", status_code=201)
+def register(body: RegisterRequest, http_request: Request, db: Session = Depends(_get_db)):
+    """Create an unverified account and dispatch the verification email.
+
+    The response is identical for new and already-registered emails
+    (enumeration protection) — the latter instead gets a "you already
+    have an account" notice. SMTP failures never fail the request: the
+    frontend offers a resend flow.
+    """
+    if not auth_settings.REGISTRATION_ENABLED:
+        logger.info(
+            "registration_blocked: switch disabled %s",
+            sanitize(f"ip={_client_ip(http_request)}"),
+        )
+        raise HTTPException(status_code=404, detail="registration disabled")
+
+    email = registration_service.normalize_email(body.email)
+    client_ip = _client_ip(http_request)
+    allowed, retry_after = check_register_rate_limit(client_ip, email)
+    if not allowed:
+        logger.info("registration_blocked: rate limited %s", sanitize(f"ip={client_ip}"))
+        raise HTTPException(
+            status_code=429,
+            detail="Too many requests",
+            headers={"Retry-After": str(retry_after)},
+        )
+
+    if error := registration_service.validate_email_format(body.email):
+        raise HTTPException(status_code=422, detail=error)
+    if error := registration_service.validate_username(body.username):
+        raise HTTPException(status_code=422, detail=error)
+    if error := validate_password(body.password):
+        raise HTTPException(status_code=422, detail=error)
+
+    if registration_service.username_taken(db, body.username):
+        logger.info(
+            "registration_blocked: username taken %s",
+            sanitize(f"username={body.username} ip={client_ip}"),
+        )
+        raise HTTPException(status_code=400, detail="username already taken")
+
+    existing = registration_service.get_user_by_email(db, email)
+    if existing is not None:
+        # Anti-enumeration: same 201, but nudge the real owner to sign in.
+        registration_service.send_already_registered_notice(existing.email)
+        logger.info(
+            "registration_blocked: email already registered %s",
+            sanitize(f"user_id={existing.id}"),
+        )
+        return {"detail": "verification email sent"}
+
+    user, code, magic_link = registration_service.create_registration(
+        db, email=email, username=body.username, password=body.password
+    )
+    db.commit()
+    # Arm the 60s cooldown the moment the email goes out — the frontend
+    # countdown starts right after this response.
+    arm_resend_cooldown(user.email)
+    registration_service.send_verification_email(user.email, code, magic_link)
+    return {"detail": "verification email sent"}
+
+
+@router.post("/verify-registration", response_model=LoginResponse)
+def verify_registration(
+    body: VerifyRegistrationRequest, http_request: Request, db: Session = Depends(_get_db)
+):
+    """Check the 6-digit code and sign the user in (access + refresh pair)."""
+    email = registration_service.normalize_email(body.email)
+    allowed, retry_after = check_verify_rate_limit(email)
+    if not allowed:
+        raise HTTPException(
+            status_code=429,
+            detail="Too many requests",
+            headers={"Retry-After": str(retry_after)},
+        )
+
+    user = registration_service.get_user_by_email(db, email)
+    if user is None:
+        return JSONResponse(
+            status_code=400,
+            content={"detail": "invalid code", "remaining_attempts": 0},
+        )
+
+    try:
+        registration_service.consume_verification_code(db, user, body.code.strip())
+    except CodeExpiredError:
+        db.rollback()
+        return JSONResponse(status_code=410, content={"detail": "code expired"})
+    except CodeInvalidError as exc:
+        # Commit so the attempts bump survives across requests.
+        db.commit()
+        return JSONResponse(
+            status_code=400,
+            content={"detail": "invalid code", "remaining_attempts": exc.remaining_attempts},
+        )
+
+    access_token, raw_refresh = _issue_token_pair(db, user)
+    db.commit()
+    logger.info(
+        "registration_verified: %s", sanitize(f"user_id={user.id} username={user.username}")
+    )
+    return LoginResponse(
+        access_token=access_token,
+        refresh_token=raw_refresh,
+        user=UserResponse(
+            id=user.id,
+            username=user.username,
+            role=user.role,
+            must_change_password=user.must_change_password,
+        ),
+    )
+
+
+@router.post("/resend-verification", status_code=202)
+def resend_verification(
+    body: ResendVerificationRequest, http_request: Request, db: Session = Depends(_get_db)
+):
+    """Re-issue the verification code (voids the previous one)."""
+    email = registration_service.normalize_email(body.email)
+    allowed, retry_after = check_register_rate_limit(_client_ip(http_request), email)
+    if not allowed:
+        raise HTTPException(
+            status_code=429,
+            detail="Too many requests",
+            headers={"Retry-After": str(retry_after)},
+        )
+
+    user = registration_service.get_user_by_email(db, email)
+    if user is None or user.email_verified_at is not None:
+        # Unknown / already-verified email: 202 without sending anything
+        # (enumeration protection mirrors /register).
+        return {"detail": "resent"}
+
+    allowed, retry_after = arm_resend_cooldown(user.email)
+    if not allowed:
+        raise HTTPException(
+            status_code=429,
+            detail="cooldown",
+            headers={"Retry-After": str(retry_after)},
+        )
+
+    code, magic_link = registration_service.issue_verification_code(db, user)
+    db.commit()
+    registration_service.send_verification_email(user.email, code, magic_link)
+    logger.info("registration_verification_resent: %s", sanitize(f"user_id={user.id}"))
+    return {"detail": "resent"}
+
+
+@router.get("/check-username", response_model=CheckUsernameResponse)
+def check_username(username: str, db: Session = Depends(_get_db)):
+    """Availability check for the registration form (debounced client-side)."""
+    username = (username or "").strip()
+    if not registration_service.USERNAME_RE.match(username):
+        return CheckUsernameResponse(available=False, suggestions=None)
+    if registration_service.username_taken(db, username):
+        return CheckUsernameResponse(
+            available=False,
+            suggestions=registration_service.suggest_usernames(db, username),
+        )
+    return CheckUsernameResponse(available=True, suggestions=None)
+
+
+@router.get("/verify-link")
+def verify_link(token: str, db: Session = Depends(_get_db)):
+    """Magic-link endpoint: verify the email via JWT, then 302 to the app.
+
+    Always redirects (never returns JSON) — the target page reads
+    ``verified`` and ``reason`` from the query string. Failure modes are
+    indistinguishable to the user except by reason code.
+    """
+    frontend = get_settings().frontend_base_url.rstrip("/")
+
+    def _redirect(
+        verified: str, reason: str | None = None, email: str | None = None
+    ) -> RedirectResponse:
+        params: dict[str, str] = {"verified": verified}
+        if reason:
+            params["reason"] = reason
+        if email:
+            params["email"] = email
+        return RedirectResponse(f"{frontend}/register/verify?{urlencode(params)}", status_code=302)
+
+    try:
+        payload = jwt.decode(token, auth_settings.SECRET_KEY, algorithms=["HS256"])
+        if payload.get("purpose") != registration_service.MAGIC_LINK_PURPOSE:
+            raise ValueError("wrong purpose")
+        user = db.get(User, int(payload["sub"]))  # type: ignore[arg-type]
+        if user is None:
+            raise ValueError("unknown user")
+    except jwt.ExpiredSignatureError:
+        return _redirect("0", reason="expired")
+    except (jwt.JWTError, ValueError, TypeError, KeyError):
+        return _redirect("0", reason="invalid")
+
+    if user.email_verified_at is None:
+        registration_service.mark_email_verified(db, user)
+        db.commit()
+        logger.info(
+            "registration_verified via magic link: %s",
+            sanitize(f"user_id={user.id} username={user.username}"),
+        )
+    return _redirect("1", email=user.email)
 
 
 @router.get("/me", response_model=UserResponse)

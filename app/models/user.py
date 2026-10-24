@@ -1,6 +1,6 @@
 """User account model."""
 
-from sqlalchemy import Boolean, Column, DateTime, Integer, String, false, func
+from sqlalchemy import Boolean, Column, DateTime, Index, Integer, String, false, func
 
 from app.core.database import Base
 
@@ -9,6 +9,10 @@ class User(Base):
     """Platform user account."""
 
     __tablename__ = "users"
+    # Unique *index* (not inline unique=True) so the constraint name stays
+    # aligned with the Alembic migration; multiple NULL emails are allowed
+    # in both PostgreSQL and SQLite.
+    __table_args__ = (Index("uq_users_email", "email", unique=True),)
 
     id = Column(Integer, primary_key=True, autoincrement=True, comment="User ID")
     username = Column(String(50), nullable=False, unique=True, comment="Login username")
@@ -23,6 +27,20 @@ class User(Base):
         nullable=False,
         server_default=false(),
         comment="Must change password on next login",
+    )
+    # Self-registration (2026-10-25): email identity + verification gate.
+    # NULL for legacy/admin-created accounts — the login gate only applies
+    # when registration is enabled AND the row has an email whose
+    # verified_at is still NULL.
+    email = Column(
+        String(255),
+        nullable=True,
+        comment="Account email (self-registration identity)",
+    )
+    email_verified_at = Column(
+        DateTime(timezone=True),
+        nullable=True,
+        comment="When the account email was verified",
     )
     created_at = Column(
         DateTime(timezone=True),
