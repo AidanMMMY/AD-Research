@@ -11,6 +11,10 @@ Blacklist:
 Self-registration (2026-10-25 design §3): /register, /verify-registration,
 /resend-verification, /check-username, /verify-link plus an
 unverified-email login gate. Gated by AUTH_REGISTRATION_ENABLED.
+
+Password reset (2026-10-25): /forgot-password, /reset-password,
+/reset-link — reuses the registration OTP state machine with
+purpose='password_reset' rows. Gated by AUTH_PASSWORD_RESET_ENABLED.
 """
 
 import hashlib
@@ -33,13 +37,17 @@ from app.core.audit import client_ip_from_headers
 from app.core.database import SessionLocal
 from app.core.log_sanitize import sanitize
 from app.core.rate_limit import (
+    arm_password_reset_cooldown,
     arm_resend_cooldown,
+    check_forgot_password_rate_limit,
     check_login_rate_limit,
     check_register_rate_limit,
+    check_reset_verify_rate_limit,
     check_verify_rate_limit,
     clear_login_attempts,
 )
 from app.core.redis_client import blacklist_token
+from app.models.email_verification import PURPOSE_PASSWORD_RESET
 from app.models.refresh_token import RefreshToken
 from app.models.user import User
 from app.models.user_device import UserDevice
@@ -48,6 +56,7 @@ from app.schemas.auth import (
     ChangePasswordResponse,
     CheckUsernameResponse,
     DeviceResponse,
+    ForgotPasswordRequest,
     LoginRequest,
     LoginResponse,
     RefreshRequest,
@@ -55,6 +64,7 @@ from app.schemas.auth import (
     RegisterDeviceRequest,
     RegisterRequest,
     ResendVerificationRequest,
+    ResetPasswordRequest,
     UserResponse,
     VerifyRegistrationRequest,
 )
@@ -238,6 +248,19 @@ def login(request: LoginRequest, http_request: Request, db: Session = Depends(_g
 #                             {"detail":"cooldown"}; unknown email → 202
 #   GET  /check-username      200 {"available":bool,"suggestions":[...]|null}
 #   GET  /verify-link         302 → {FRONTEND_BASE}/register/verify?verified=…
+#
+# ── Password reset (2026-10-25; same OTP machinery, purpose-separated) ──
+#
+#   POST /forgot-password     202 {"detail":"reset email sent"} for ANY
+#                             well-formed email (anti-enumeration); cooldown
+#                             → 429 {"detail":"cooldown"}; 5/IP/h + 3/email/h
+#   POST /reset-password      200 LoginResponse-shape (auto login; proof =
+#                             email+code OR token); wrong code → 400
+#                             {"detail":"invalid code","remaining_attempts":n};
+#                             expired code/link → 410; same-as-old or policy
+#                             violation → 422
+#   GET  /reset-link          302 → {FRONTEND_BASE}/reset-password?token=…
+#                             &email=… ; failure → …?error=expired|invalid
 
 
 @router.post("/register", status_code=201)
@@ -442,6 +465,202 @@ def verify_link(token: str, db: Session = Depends(_get_db)):
             sanitize(f"user_id={user.id} username={user.username}"),
         )
     return _redirect("1", email=user.email)
+
+
+# ── Self-service password reset (2026-10-25) ──
+
+
+def _resolve_reset_link_token(token: str, db: Session) -> User:
+    """Decode a password-reset-link JWT into its user.
+
+    Raises ``jwt.ExpiredSignatureError`` for a past-exp token and
+    ``ValueError`` for anything else malformed (wrong purpose, unknown /
+    inactive user, bad payload) — the two callers map these onto their
+    public failure modes (410 / 400 on POST, error=expired / error=invalid
+    on the GET redirect).
+    """
+    payload = jwt.decode(token, auth_settings.SECRET_KEY, algorithms=["HS256"])
+    if payload.get("purpose") != registration_service.PASSWORD_RESET_LINK_PURPOSE:
+        raise ValueError("wrong purpose")
+    user = db.get(User, int(payload["sub"]))  # type: ignore[arg-type]
+    if user is None or not user.is_active:
+        raise ValueError("unknown user")
+    return user
+
+
+@router.post("/forgot-password", status_code=202)
+def forgot_password(
+    body: ForgotPasswordRequest, http_request: Request, db: Session = Depends(_get_db)
+):
+    """Dispatch a reset email; 202 for every well-formed address.
+
+    Anti-enumeration: unknown emails answer exactly like known ones and
+    trigger no send. The 60s cooldown is armed for the address itself
+    regardless of account existence — a 429 that only fired for registered
+    addresses would leak which emails have accounts.
+    """
+    if not auth_settings.PASSWORD_RESET_ENABLED:
+        logger.info(
+            "password_reset_blocked: switch disabled %s",
+            sanitize(f"ip={_client_ip(http_request)}"),
+        )
+        raise HTTPException(status_code=404, detail="password reset disabled")
+
+    email = registration_service.normalize_email(body.email)
+    client_ip = _client_ip(http_request)
+    allowed, retry_after = check_forgot_password_rate_limit(client_ip, email)
+    if not allowed:
+        raise HTTPException(
+            status_code=429,
+            detail="Too many requests",
+            headers={"Retry-After": str(retry_after)},
+        )
+
+    if error := registration_service.validate_email_format(body.email):
+        raise HTTPException(status_code=422, detail=error)
+
+    allowed, retry_after = arm_password_reset_cooldown(email)
+    if not allowed:
+        raise HTTPException(
+            status_code=429,
+            detail="cooldown",
+            headers={"Retry-After": str(retry_after)},
+        )
+
+    user = registration_service.get_user_by_email(db, email)
+    if user is not None and user.is_active:
+        code, reset_link = registration_service.issue_verification_code(
+            db, user, purpose=PURPOSE_PASSWORD_RESET
+        )
+        db.commit()
+        registration_service.send_password_reset_email(user.email, code, reset_link)
+        logger.info("password_reset_requested: %s", sanitize(f"user_id={user.id}"))
+    # Unknown/inactive email: same 202, nothing sent, no user_id in logs.
+    return {"detail": "reset email sent"}
+
+
+@router.post("/reset-password", response_model=LoginResponse)
+def reset_password(
+    body: ResetPasswordRequest, http_request: Request, db: Session = Depends(_get_db)
+):
+    """Verify the email proof, set the new password and sign the user in.
+
+    Proof is either {email, code} (typed OTP) or {token} (the email button
+    JWT). On success every existing refresh token is revoked (admin-reset
+    pattern — other devices are kicked) and a fresh pair is returned so the
+    current browser lands signed-in, avoiding a retype of the new password.
+    """
+    if not auth_settings.PASSWORD_RESET_ENABLED:
+        raise HTTPException(status_code=404, detail="password reset disabled")
+
+    if body.token:
+        # Token mode: the proof is a signed 15-min JWT, not a guessable
+        # code — no brute-force budget needed.
+        try:
+            user = _resolve_reset_link_token(body.token, db)
+        except jwt.ExpiredSignatureError:
+            raise HTTPException(status_code=410, detail="reset link expired")
+        except (jwt.JWTError, ValueError, TypeError, KeyError):
+            raise HTTPException(status_code=400, detail="invalid reset link")
+    else:
+        email = registration_service.normalize_email(body.email or "")
+        allowed, retry_after = check_reset_verify_rate_limit(email)
+        if not allowed:
+            raise HTTPException(
+                status_code=429,
+                detail="Too many requests",
+                headers={"Retry-After": str(retry_after)},
+            )
+        user = registration_service.get_user_by_email(db, email)
+        if user is None or not user.is_active:
+            # Unknown email is indistinguishable from a wrong code.
+            return JSONResponse(
+                status_code=400,
+                content={"detail": "invalid code", "remaining_attempts": 0},
+            )
+
+    # Policy first, so a weak password cannot burn one of the 5 code
+    # attempts; the same-as-old check deliberately runs AFTER the proof —
+    # in front of it, anyone could confirm password guesses without a
+    # valid code.
+    if error := validate_password(body.new_password):
+        raise HTTPException(status_code=422, detail=error)
+
+    if not body.token:
+        try:
+            registration_service.consume_verification_code(
+                db, user, (body.code or "").strip(), purpose=PURPOSE_PASSWORD_RESET
+            )
+        except CodeExpiredError:
+            db.rollback()
+            return JSONResponse(status_code=410, content={"detail": "code expired"})
+        except CodeInvalidError as exc:
+            # Commit so the attempts bump survives across requests.
+            db.commit()
+            return JSONResponse(
+                status_code=400,
+                content={"detail": "invalid code", "remaining_attempts": exc.remaining_attempts},
+            )
+
+    if _verify_password(body.new_password, user.password_hash):
+        # Roll back the (uncommitted) code consumption so the code stays
+        # usable for an immediate retry with a different password.
+        db.rollback()
+        raise HTTPException(status_code=422, detail="新密码不能与旧密码相同")
+
+    user.password_hash = _hash_password(body.new_password)
+    # A completed reset proves mailbox ownership — unlock unverified
+    # accounts too (this is the documented way out of "registered but the
+    # verify email never arrived and now I forgot the password").
+    if user.email_verified_at is None:
+        registration_service.mark_email_verified(db, user)
+    # Admin-reset pattern: revoke every live refresh token, then issue a
+    # fresh pair below so this session continues signed-in while other
+    # devices are logged out.
+    (
+        db.query(RefreshToken)
+        .filter(RefreshToken.user_id == user.id, RefreshToken.revoked.is_(False))
+        .update({"revoked": True})
+    )
+    access_token, raw_refresh = _issue_token_pair(db, user)
+    db.commit()
+    clear_login_attempts(user.username)
+    logger.info(
+        "password_reset_completed: %s", sanitize(f"user_id={user.id} username={user.username}")
+    )
+    return LoginResponse(
+        access_token=access_token,
+        refresh_token=raw_refresh,
+        user=UserResponse(
+            id=user.id,
+            username=user.username,
+            role=user.role,
+            must_change_password=user.must_change_password,
+        ),
+    )
+
+
+@router.get("/reset-link")
+def reset_link(token: str, db: Session = Depends(_get_db)):
+    """Email-button hop: validate the reset JWT, then 302 to the app.
+
+    On success the still-valid token is forwarded to the page
+    (/reset-password?token=…&email=…) — the page posts it back to
+    /reset-password, so no server-side single-use state is needed. Failures
+    redirect with an ``error`` reason, never JSON (mirrors /verify-link).
+    """
+    frontend = get_settings().frontend_base_url.rstrip("/")
+
+    def _redirect(query: dict[str, str]) -> RedirectResponse:
+        return RedirectResponse(f"{frontend}/reset-password?{urlencode(query)}", status_code=302)
+
+    try:
+        user = _resolve_reset_link_token(token, db)
+    except jwt.ExpiredSignatureError:
+        return _redirect({"error": "expired"})
+    except (jwt.JWTError, ValueError, TypeError, KeyError):
+        return _redirect({"error": "invalid"})
+    return _redirect({"token": token, "email": user.email})
 
 
 @router.get("/me", response_model=UserResponse)

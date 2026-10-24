@@ -350,7 +350,10 @@ export default function Login() {
         </div>
 
         <div className="login-form-hint">
-          按 Enter 登录 &middot; 忘记密码请联系管理员
+          按 Enter 登录 &middot;{' '}
+          <Link to="/forgot-password" className="register-link">
+            忘记密码？
+          </Link>
           <br />
           还没有账号？
           <Link to="/register" className="register-link register-link--accent">

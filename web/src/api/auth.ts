@@ -52,6 +52,20 @@ export interface VerifyRegistrationResponse {
   user: UserProfile;
 }
 
+// ---- Password reset (2026-10-25; reuses the registration OTP machinery) ----
+// Contract shared with the backend — do not change unilaterally:
+//   POST /auth/forgot-password  202 {"detail":"reset email sent"} for ANY
+//                               well-formed email (anti-enumeration);
+//                               429 {"detail":"cooldown"} / rate limit
+//   POST /auth/reset-password   200 tokens+user | 400 invalid code
+//                               (+remaining_attempts) | 410 code/link expired
+//                               | 422 password policy / same-as-old | 404 disabled
+//   GET  /auth/reset-link       302 → /reset-password?token=…&email=…
+//                               | ?error=expired|invalid
+export type ResetPasswordPayload =
+  | { email: string; code: string; new_password: string }
+  | { token: string; new_password: string };
+
 export interface DeviceInfo {
   id: number;
   device_name: string;
@@ -83,6 +97,10 @@ export const authApi = {
     client.post<{ detail?: string }>('/auth/resend-verification', { email }),
   checkUsername: (username: string) =>
     client.get<CheckUsernameResponse>('/auth/check-username', { params: { username } }),
+  forgotPassword: (email: string) =>
+    client.post<{ detail: string }>('/auth/forgot-password', { email }),
+  resetPassword: (data: ResetPasswordPayload) =>
+    client.post<VerifyRegistrationResponse>('/auth/reset-password', data),
   listDevices: () => client.get<DeviceInfo[]>('/auth/devices'),
   removeDevice: (id: number) => client.delete(`/auth/devices/${id}`),
 };

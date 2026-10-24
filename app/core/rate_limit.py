@@ -181,3 +181,77 @@ def arm_resend_cooldown(email: str | None) -> tuple[bool, int]:
     except Exception as exc:  # pragma: no cover — Redis outage path
         logger.warning("resend cooldown Redis unavailable, failing open: %s", exc)
         return True, 0
+
+
+# ── Password-reset rate limits (2026-10-25) ──
+#
+# forgot-password:  60s per-email cooldown (check-and-set) + 3 / email / hour
+#                   + 5 / IP / hour — the cooldown is armed for EVERY address,
+#                   registered or not, so a 429 that only fires for existing
+#                   accounts cannot be used as an enumeration oracle.
+# reset-password:   10 / email / hour brute-force budget on the OTP (the
+#                   token mode needs no limiter: the proof there is a signed
+#                   JWT, not a guessable 6-digit code).
+#
+# Same fail-open contract as the login/register limiters.
+
+_FORGOT_IP_LIMIT = 5
+_FORGOT_IP_WINDOW_SECONDS = 3600
+_FORGOT_EMAIL_LIMIT = 3
+_FORGOT_EMAIL_WINDOW_SECONDS = 3600
+_RESET_VERIFY_EMAIL_LIMIT = 10
+_RESET_VERIFY_EMAIL_WINDOW_SECONDS = 3600
+_RESET_COOLDOWN_SECONDS = 60
+
+
+def check_forgot_password_rate_limit(ip: str | None, email: str | None) -> tuple[bool, int]:
+    """Guard for POST /auth/forgot-password (5/IP/h + 3/email/h)."""
+    retry_after = 1
+    if ip:
+        allowed, ttl = _hit(
+            f"rl:pwreset-forgot:ip:{ip}", _FORGOT_IP_LIMIT, _FORGOT_IP_WINDOW_SECONDS
+        )
+        if not allowed:
+            return False, ttl
+        retry_after = max(retry_after, ttl)
+    if email:
+        allowed, ttl = _hit(
+            f"rl:pwreset-forgot:email:{email.lower()}",
+            _FORGOT_EMAIL_LIMIT,
+            _FORGOT_EMAIL_WINDOW_SECONDS,
+        )
+        if not allowed:
+            return False, ttl
+        retry_after = max(retry_after, ttl)
+    return True, retry_after
+
+
+def check_reset_verify_rate_limit(email: str | None) -> tuple[bool, int]:
+    """Guard for the code mode of POST /auth/reset-password (10/email/h)."""
+    if not email:
+        return True, 1
+    return _hit(
+        f"rl:pwreset-verify:email:{email.lower()}",
+        _RESET_VERIFY_EMAIL_LIMIT,
+        _RESET_VERIFY_EMAIL_WINDOW_SECONDS,
+    )
+
+
+def arm_password_reset_cooldown(email: str | None) -> tuple[bool, int]:
+    """Check-and-set the 60s per-email forgot-password cooldown.
+
+    Separate key namespace from ``arm_resend_cooldown`` so a registration
+    resend never eats the reset cooldown window (and vice versa). Arming is
+    unconditional w.r.t. account existence — see the block comment above.
+    """
+    if not email:
+        return True, 0
+    key = f"rl:pwreset:cooldown:{email.lower()}"
+    try:
+        client = get_redis_client()
+        if client.set(key, "1", nx=True, ex=_RESET_COOLDOWN_SECONDS):
+            return True, 0
+        return False, max(1, client.ttl(key) or _RESET_COOLDOWN_SECONDS)
+    except Exception as exc:  # pragma: no cover — Redis outage path
+        logger.warning("password-reset cooldown Redis unavailable, failing open: %s", exc)
+        return True, 0

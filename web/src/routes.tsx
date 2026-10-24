@@ -5,6 +5,10 @@ const Login = lazy(() => import('./pages/Login'));
 // 自助注册（2026-10-25）：公开区路由，挂在登录页同级，不进 RequireAuth
 const Register = lazy(() => import('./pages/Register'));
 const RegisterVerify = lazy(() => import('./pages/RegisterVerify'));
+// 找回密码（2026-10-25）：同款公开区路由；/reset-password 支持邮件链接
+// 回跳（?token=…&email=… / ?error=expired|invalid）与验证码两种模式
+const ForgotPassword = lazy(() => import('./pages/ForgotPassword'));
+const ResetPassword = lazy(() => import('./pages/ResetPassword'));
 const ChangePassword = lazy(() => import('./pages/ChangePassword'));
 const Dashboard = lazy(() => import('./pages/Dashboard'));
 const InstrumentList = lazy(() => import('./pages/InstrumentList'));
@@ -121,6 +125,9 @@ export const routes: RouteConfig[] = [
   // ?verified=1&email= / ?verified=0&reason=
   { path: '/register', element: wrap(Register), auth: false },
   { path: '/register/verify', element: wrap(RegisterVerify), auth: false },
+  // 找回密码两步（2026-10-25）：公开区，与注册路由同级
+  { path: '/forgot-password', element: wrap(ForgotPassword), auth: false },
+  { path: '/reset-password', element: wrap(ResetPassword), auth: false },
   // 强制改密页（2026-10-24）：must_change_password=true 时 RequireAuth 会
   // 把所有路由弹回这里；无菜单，不出现在侧边栏
   { path: '/change-password', element: wrap(ChangePassword), auth: true },

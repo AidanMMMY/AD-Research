@@ -52,6 +52,30 @@ class ResendVerificationRequest(BaseModel):
     email: str
 
 
+# ── Password reset (2026-10-25, reuses the registration OTP machinery) ──
+
+
+class ForgotPasswordRequest(BaseModel):
+    email: str
+
+
+class ResetPasswordRequest(BaseModel):
+    """Proof of mailbox ownership + the new password.
+
+    Two mutually exclusive proof modes:
+      * code mode — ``email`` + ``code`` (typed from the email body);
+      * token mode — ``token`` (the JWT carried by the email's primary
+        button via GET /auth/reset-link → /reset-password?token=…), no code
+        needed. The password policy is enforced in the endpoint via
+        app.services.password_policy like every other password path.
+    """
+
+    new_password: str
+    email: str | None = None
+    code: str | None = None
+    token: str | None = None
+
+
 class CheckUsernameResponse(BaseModel):
     available: bool
     suggestions: list[str] | None = None

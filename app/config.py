@@ -328,6 +328,11 @@ class AuthSettings(BaseSettings):
     # off, POST /auth/register 404s and the unverified-email login gate is
     # inactive, so existing deployments behave exactly as before.
     REGISTRATION_ENABLED: bool = False
+    # Password-reset master switch (2026-10-25). Independent of registration
+    # because most existing accounts have no email on file — enable only for
+    # a small verified cohort first. When off, the forgot/reset endpoints
+    # 404 exactly like /register does.
+    PASSWORD_RESET_ENABLED: bool = False
 
     model_config = SettingsConfigDict(
         env_prefix="AUTH_",

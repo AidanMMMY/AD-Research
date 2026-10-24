@@ -1,4 +1,5 @@
-"""Self-service email registration domain logic (2026-10-25 design §3).
+"""Self-service email registration domain logic (2026-10-25 design §3) and
+password reset (2026-10-25 follow-up, reuses the same code state machine).
 
 Layering: ``app/api/v1/auth.py`` owns HTTP concerns (status codes, rate
 limits, token issuance); this module owns the verification-code state
@@ -7,6 +8,10 @@ machine, account creation and outbound emails.
 Hard rule: the plaintext verification code never touches the logs or any
 exception message — it exists only in the outgoing email body. Database
 rows store the SHA-256 hash and comparisons are constant-time.
+
+The ``email_verifications`` table serves two issuance flows separated by
+``purpose`` ('register' | 'password_reset'); issue/consume always filter by
+purpose so codes from one flow can never be redeemed in the other.
 """
 
 from __future__ import annotations
@@ -25,7 +30,11 @@ from sqlalchemy.orm import Session
 
 from app.config import auth_settings, get_settings
 from app.core.log_sanitize import sanitize
-from app.models.email_verification import EmailVerification
+from app.models.email_verification import (
+    PURPOSE_PASSWORD_RESET,
+    PURPOSE_REGISTER,
+    EmailVerification,
+)
 from app.models.user import User
 from app.services.transactional_email import send_email
 
@@ -37,6 +46,7 @@ CODE_TTL_MINUTES = 10
 MAX_CODE_ATTEMPTS = 5
 MAGIC_LINK_MINUTES = 15
 MAGIC_LINK_PURPOSE = "register_verify"
+PASSWORD_RESET_LINK_PURPOSE = "password_reset_link"
 
 USERNAME_RE = re.compile(r"^[a-zA-Z0-9_]{3,30}$")
 EMAIL_RE = re.compile(r"^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$")
@@ -138,15 +148,21 @@ def _hash_code(code: str) -> str:
     return hashlib.sha256(code.encode("utf-8")).hexdigest()
 
 
-def issue_verification_code(db: Session, user: User) -> tuple[str, str]:
-    """Void pending codes and issue a fresh one.
+def issue_verification_code(
+    db: Session, user: User, purpose: str = PURPOSE_REGISTER
+) -> tuple[str, str]:
+    """Void pending codes **of the same purpose** and issue a fresh one.
 
-    Caller owns the commit. Returns ``(code, magic_link)`` — the plaintext
-    code must flow only into the email body.
+    Issuing a reset code leaves a pending register code untouched (and vice
+    versa) so one flow can't grief the other. Caller owns the commit.
+    Returns ``(code, link)`` — the plaintext code must flow only into the
+    email body; the link is the purpose-matching magic link (register
+    verify vs password reset).
     """
     now = _utcnow()
     db.query(EmailVerification).filter(
         EmailVerification.user_id == user.id,
+        EmailVerification.purpose == purpose,
         EmailVerification.consumed_at.is_(None),
     ).update({"consumed_at": now}, synchronize_session=False)
     code = _generate_code()
@@ -156,23 +172,32 @@ def issue_verification_code(db: Session, user: User) -> tuple[str, str]:
             code_hash=_hash_code(code),
             expires_at=now + timedelta(minutes=CODE_TTL_MINUTES),
             attempts=0,
+            purpose=purpose,
         )
     )
+    if purpose == PURPOSE_PASSWORD_RESET:
+        return code, build_reset_link(user)
     return code, build_magic_link(user)
 
 
-def consume_verification_code(db: Session, user: User, code: str) -> None:
-    """Verify one code attempt against the newest pending row.
+def consume_verification_code(
+    db: Session, user: User, code: str, purpose: str = PURPOSE_REGISTER
+) -> None:
+    """Verify one code attempt against the newest pending row of ``purpose``.
 
     Success: mark the row consumed and the user's email verified (caller
-    commits). Failure raises ``CodeExpiredError`` (TTL passed / row voided)
-    or ``CodeInvalidError`` (wrong code — the attempts bump is flushed so
-    the brute-force budget survives across requests; caller commits).
+    commits; a password-reset success also sets ``email_verified_at`` —
+    completing a reset proves mailbox ownership, which is exactly what
+    ``email_verified_at`` asserts). Failure raises ``CodeExpiredError``
+    (TTL passed / row voided) or ``CodeInvalidError`` (wrong code — the
+    attempts bump is flushed so the brute-force budget survives across
+    requests; caller commits).
     """
     row = (
         db.query(EmailVerification)
         .filter(
             EmailVerification.user_id == user.id,
+            EmailVerification.purpose == purpose,
             EmailVerification.consumed_at.is_(None),
         )
         .order_by(EmailVerification.id.desc())
@@ -228,14 +253,14 @@ def create_registration(
     return user, code, magic_link
 
 
-# ── Magic link (short-lived JWT, zero extra storage) ──
+# ── Magic links (short-lived JWTs, zero extra storage) ──
 
 
-def create_magic_link_token(user_id: int) -> str:
+def create_magic_link_token(user_id: int, purpose: str = MAGIC_LINK_PURPOSE) -> str:
     now = _utcnow()
     payload = {
         "sub": str(user_id),
-        "purpose": MAGIC_LINK_PURPOSE,
+        "purpose": purpose,
         "iat": now,
         "exp": now + timedelta(minutes=MAGIC_LINK_MINUTES),
     }
@@ -245,6 +270,20 @@ def create_magic_link_token(user_id: int) -> str:
 def build_magic_link(user: User) -> str:
     base = get_settings().frontend_base_url.rstrip("/")
     return f"{base}/api/v1/auth/verify-link?token={create_magic_link_token(user.id)}"
+
+
+def build_reset_link(user: User) -> str:
+    """One-click reset link for the email's primary button.
+
+    The token is a 15-minute JWT with ``purpose=password_reset_link``; the
+    GET /auth/reset-link hop validates it, then 302s to the frontend page
+    which posts the same token back to /auth/reset-password.
+    """
+    base = get_settings().frontend_base_url.rstrip("/")
+    return (
+        f"{base}/api/v1/auth/reset-link"
+        f"?token={create_magic_link_token(user.id, PASSWORD_RESET_LINK_PURPOSE)}"
+    )
 
 
 # ── Outbound emails ──
@@ -269,6 +308,21 @@ def send_verification_email(to: str, code: str, magic_link: str) -> bool:
         "—— AlloyResearch"
     )
     return send_email(to, "AlloyResearch 邮箱验证 / Verify your email", html, text)
+
+
+def send_password_reset_email(to: str, code: str, reset_link: str) -> bool:
+    html = _render_template("reset_password.html", code=code, reset_link=reset_link)
+    text = (
+        "AlloyResearch 重置密码 / Reset your password\n\n"
+        "点击链接设置新密码（15 分钟内有效）/ Open this link to set a new password "
+        "(valid 15 min):\n"
+        f"{reset_link}\n\n"
+        f"验证码（10 分钟内有效）/ Code (valid 10 min): {code}\n\n"
+        "如果这不是你的操作，建议尽快修改邮箱密码 / If this wasn't you, secure your "
+        "mailbox.\n\n"
+        "—— AlloyResearch"
+    )
+    return send_email(to, "AlloyResearch 重置密码 / Reset your password", html, text)
 
 
 def send_already_registered_notice(to: str) -> bool:
