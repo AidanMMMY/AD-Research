@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>20261025-platform-slimming-review</title><style>
+body{font-family:-apple-system,BlinkMacSystemFont,'PingFang SC',sans-serif;max-width:1080px;margin:40px auto;padding:0 22px;line-height:1.75;color:#182033;background:#fff}
+h1{border-bottom:2px solid #4a6cf7;padding-bottom:10px}h2{margin-top:36px;color:#253b6e}h3{margin-top:28px;color:#3b4f7c}h4{margin-bottom:6px}
+a{color:#3157c8}code{background:#f0f2f8;padding:1px 5px;border-radius:4px;font-size:13px}pre{background:#101827;color:#e5edf8;padding:16px;border-radius:8px;overflow:auto}pre code{background:none;padding:0}
+table{border-collapse:collapse;width:100%;margin:16px 0;font-size:14px}th,td{border:1px solid #d9dfeb;padding:8px 10px;text-align:left;vertical-align:top}th{background:#f4f6fb}
+blockquote{border-left:4px solid #4a6cf7;margin:16px 0;padding:8px 16px;background:#f7f9ff;color:#505b71}li{margin:5px 0}strong{color:#101a30}
+</style></head><body>
+<h1>AlloyResearch 非 Web 端与平台瘦身综合评估</h1>
+<blockquote>日期：2026-10-25<br>方法：3 路只读代码/文档审计 + 主会话生产容器与 cron 只读核验<br>口径：用户补充的“荣誉”按“冗余”理解；“已实现”不等于已构建、已发布或有人使用</blockquote>
+<h2>一、结论先行</h2>
+<p><strong>需要瘦身，但不应该把 Web 以外的服务一刀切废弃。</strong></p>
+<p>建议采用“<strong>Web 全功能主端 + 核心后台数据链路 + 可选 macOS companion</strong>”的结构，优先退出重复原型和无消费者的平行链路，而不是按页面、router 或脚本数量砍业务。</p>
+<table><thead><tr><th>对象</th><th>建议</th><th>核心理由</th></tr></thead><tbody>
+<tr><td>Web + FastAPI + PostgreSQL + Redis + Nginx</td><td>必须保留</td><td>在线产品与主数据链路</td></tr>
+<tr><td>APScheduler + 两个 Celery worker</td><td>必须保留，按任务优化</td><td>Web 的行情、指标、评分、公告等上游</td></tr>
+<tr><td><code>native/ADResearch</code> macOS</td><td>收窄为内部阅读/桌面效率 companion</td><td>有真实试用证据和菜单栏/⌘K/深链价值，但不是 Web 全功能替代</td></tr>
+<tr><td><code>native/ADResearch</code> iOS</td><td>实验状态，冻结对外承诺</td><td>共享代码但无真机、发布、持续使用证据</td></tr>
+<tr><td>旧 <code>ios/ADResearch</code></td><td>当前认证兼容收尾后优先归档</td><td>只有登录脚手架，与主 native 完全重复</td></tr>
+<tr><td>独立 <code>research/</code> 五进程编排器</td><td>优先归档</td><td>文件型原型，非 Web 依赖，调度实现还有重复拉起问题</td></tr>
+<tr><td><code>agent/</code> 独立采集</td><td>按源合并，不直接全停</td><td>生产 cron 正在运行；有重复源，也有抗 WAF 和独有覆盖</td></tr>
+<tr><td>overnight research</td><td>只保留一套、按需运行</td><td>不是 Web 必需；有独立报告价值，也有独立 LLM 治理成本</td></tr>
+<tr><td>wewe-rss</td><td>按公众号功能保留</td><td>可选采集通道，不是全站核心</td></tr>
+<tr><td>scripts/reports</td><td>分类整理，不能整体删除</td><td>混有部署、备份、恢复等关键工具和一次性历史脚本</td></tr>
+<tr><td>真实交易</td><td>做明确产品去留决策</td><td>高安全、高测试成本；不是重复功能，不能为瘦身删风控</td></tr>
+</tbody></table>
+<p><strong>如果目标是最大限度降低客户端维护成本，且确认 macOS 也不再持续使用，可以进一步转为 Web-only 客户端。当前证据不足以把“无遥测”直接等同于“无用户”。</strong></p>
+<h2>二、实际有哪些非 Web 组成部分</h2>
+<h3>2.1 生产在线与数据链路</h3>
+<p>2026-10-25 主会话通过 ECS 只读核验，实际常驻容器为：</p>
+<ul>
+<li><code>alloyresearch-nginx</code></li>
+<li><code>alloyresearch-backend</code></li>
+<li><code>alloyresearch-celery-worker-indicator</code></li>
+<li><code>alloyresearch-celery-worker-cninfo</code></li>
+<li><code>alloyresearch-postgres</code></li>
+<li><code>alloyresearch-redis</code></li>
+<li><code>alloyresearch-wewe-rss</code></li>
+</ul>
+<p>独立采集 worker 由 <code>/etc/cron.d/ad-research-orchestrate</code> 每小时触发。当前容器清单中没有独立 <code>research</code> 五进程或 Hermes 常驻容器。</p>
+<p>拓扑：</p>
+<pre><code class="language-text">Browser / native clients
+        ↓ HTTPS
+Nginx → FastAPI → PostgreSQL / Redis
+                    ↓
+       APScheduler → Celery indicator / cninfo+industry
+                    ↓
+              Web 数据与报告
+
+宿主机 cron → agent 独立采集 → JSON / 静态报告 + 失败告警
+手工按需 → overnight research → SQLite / Markdown / HTML</code></pre>
+<p>核心证据：</p>
+<ul>
+<li>生产编排：<code>deploy/aliyun-ecs/docker-compose.yml</code></li>
+<li>FastAPI/router/scheduler 生命周期：<code>app/main.py</code></li>
+<li>Celery 队列：<code>app/core/celery_app.py</code></li>
+<li>调度任务：<code>app/core/scheduler.py</code></li>
+<li>agent cron 与编排：<code>agent/scripts/setup_cron.sh</code>、<code>agent/scripts/orchestrate_v2.py</code></li>
+</ul>
+<p><strong>这些后台服务不是“Web 之外的附属品”。停掉 scheduler 或 Celery，API 可能仍在线，但页面数据会逐渐陈旧。</strong></p>
+<h3>2.2 原生客户端实际有两套 Swift 实现</h3>
+<h4>A. <code>native/ADResearch</code>：现行共享应用</h4>
+<ul>
+<li>SwiftUI 单 target，macOS 14+ / iOS 17+。</li>
+<li>约 71 个应用 Swift 文件、12,284 物理行，14 个顶层分区、42 个 REST endpoint accessor。</li>
+<li>有 macOS 三栏、菜单栏、⌘K、深链、本地提醒和 iOS Tab 外壳。</li>
+<li>功能覆盖资讯、研报、标的、宏观、板块、情绪、资金流、评分、自选/池、学习等阅读型路径。</li>
+<li>不覆盖 Web 的完整量化、交易、公告报告、AI Chat 和管理运维。</li>
+<li>无第三方依赖是优点；无 XCTest/原生 CI、手工 Codable 契约和自定义 CLT 打包是主要维护风险。</li>
+</ul>
+<p>功能与架构见 <code>native/ADResearch/README.md</code>、<code>App/AppState.swift</code>、<code>Core/Networking/Endpoints.swift</code>。</p>
+<h4>B. 旧 <code>ios/ADResearch</code>：登录脚手架</h4>
+<ul>
+<li>无 Xcode 工程，登录后仍是 <code>Text("Authenticated")</code> 占位页。</li>
+<li>独立维护另一套认证、网络和 DTO；与主 native 不联动。</li>
+<li>主 native README 已明确它是更早的未完工尝试：<code>native/ADResearch/README.md:159-162</code>。</li>
+</ul>
+<p><strong>旧目录是最明确的目录级退役候选。</strong>当前首登改密任务正在同时补两套客户端的兼容，目的是避免后端上线即锁死旧端，不代表应继续长期投资两套实现。</p>
+<h3>2.3 旁路采集与研究</h3>
+<ul>
+<li><code>agent/</code>：独立镜像、cron、网络、凭据、JSON 产物和 watchdog；与主 scheduler 有部分同源重复。</li>
+<li><code>research/</code>：五进程文件型编排器，不进入生产镜像，未找到 Web 主链路调用。</li>
+<li>overnight v1/v2：另一套手动长任务研究系统，产出独立报告，不等于 Web AI note/digest/券商研报。</li>
+<li>Hermes：文档中的手工 agent 沙箱，不是在线服务依赖；当前生产容器列表未见其运行。</li>
+</ul>
+<h2>三、功能完备度与复杂度评价</h2>
+<h3>3.1 Web 主平台</h3>
+<p>静态盘点约为 57 个页面 TSX、45 个 v1 router 文件、100 个受 Git 跟踪的 scripts 文件。范围确实膨胀，但路由核对没有发现高置信度的大批整页重复。</p>
+<p><strong>问题更多是范围治理和平行实现，而不是“页面多所以都应删”。</strong></p>
+<p>核心价值闭环应保留：</p>
+<pre><code class="language-text">行情 → 指标 → 评分 → 筛选 → 标的池 → 策略/回测/信号 → 报告</code></pre>
+<p>资讯、Daily Digest、AI ResearchNote、券商研报、CNInfo、SEC 各有独立数据和工作流，不应因名称相近而合并。</p>
+<h3>3.2 native macOS/iOS</h3>
+<p>macOS 源码广度较高，但仍是内部阅读型 companion，不是公开发行产品：</p>
+<ul>
+<li>有所有者实际试用和 DMG 构建记录。</li>
+<li>没有外部下载、活跃用户、TestFlight/App Store 或持续使用证据。</li>
+<li>无自动化测试 target 和原生 CI；历史多为 <code>swiftc -parse</code>，不等于完整编译和真机验收。</li>
+<li>手工 DTO 已发生过契约漂移导致研报解码失败；本次 <code>must_change_password</code> 再次证明三端同步成本。</li>
+</ul>
+<p><strong>建议保留独有价值，不追求 Web 全 parity。</strong>优先晨读、资讯、宏观、标的、菜单栏和桌面效率路径。</p>
+<h3>3.3 agent / research / overnight</h3>
+<ul>
+<li>agent 工程化程度较高，有 cron、状态报告、失败告警和受控镜像，但又形成第二套采集运维面。</li>
+<li><code>research/orchestrator.py</code> 声明 1800/3600/7200 秒间隔，却丢弃 interval；子进程退出后每 5 分钟被重新拉起，若常驻运行，实际采集节奏可能与设计不符。</li>
+<li>overnight v2 比旧编排器完整，但独立 LLM fallback、密钥、成本和报告治理仍与主平台分叉。</li>
+</ul>
+<h2>四、优先瘦身清单</h2>
+<h3>P0：先做无业务下线的风险止损</h3>
+<h4>P0-1. 将 demo/synthetic 数据移出标准初始化</h4>
+<p><code>scripts/init_demo_data.py</code> 生成随机价格、RSI、收益率、夏普等指标，README/AGENTS 仍把它列为“首次数据”步骤。<code>seed_all_demo_data.py</code> 还会生成随机 NAV、交易和共享池。</p>
+<p>建议：</p>
+<ul>
+<li>真实初始化文档改为真实数据源 ETL。</li>
+<li>demo 仅在显式 demo 模式和独立数据库运行。</li>
+<li>先盘点现有 <code>is_synthetic</code>、demo 来源及派生评分；不得按日期批量删除，既有共享池和报告单独审查。</li>
+</ul>
+<p>收益是降低数据可信度和排障风险，不是少几个文件。</p>
+<h4>P0-2. 隔离危险一次性写库脚本和硬编码凭据脚本</h4>
+<p>仓库仍有绕 Alembic 的手工 schema 修复、模块加载即写库的脚本，以及包含硬编码登录凭据、会调用真实刷新端点的手工测试脚本，例如 <code>scripts/test_refresh.py</code>。</p>
+<p>建议：</p>
+<ul>
+<li>不在报告或文档复制凭据；若曾真实有效，先轮换。</li>
+<li>凭据改环境变量，手工测试移出常规脚本入口。</li>
+<li>一次性写库脚本归档前核对备份、影响行、Alembic 状态和回滚方案。</li>
+<li>保留仍被 runbook 引用的监控、备份和恢复工具。</li>
+</ul>
+<h4>P0-3. 暂停新增平行实现</h4>
+<p>在所有权收敛前，不再新增第三套客户端、第二套同级搜索/研究管线或旁路部署入口。新增功能必须先明确真实消费者、唯一数据/调度所有者、契约事实源、运行成本和退出条件。</p>
+<h3>P1：生产核实后做结构收敛</h3>
+<h4>P1-1. 客户端只保留一套 Swift 业务实现</h4>
+<ol>
+<li>当前密码兼容收尾并验证。</li>
+<li>旧 <code>ios/ADResearch</code> 标记 legacy、停止入口和文档引导。</li>
+<li>确认无独立消费者后归档目录；Git 历史本身保留。</li>
+<li>native 只聚焦 macOS companion；iOS 在真机验证前保持实验状态。</li>
+<li>逐步用后端 OpenAPI 做 DTO 生成或契约 smoke tests，优先登录、refresh rotation、强制改密和研报解码。</li>
+</ol>
+<h4>P1-2. agent 按源确定唯一所有者</h4>
+<p>CLS 已确认与主平台使用相同 endpoint 和参数，属于真实双采集；agent 的多 TLS profile 抗 WAF 能力又有价值。</p>
+<p>建议把 agent 的获取能力变成主 crawler fallback 或统一 normalizer，而不是简单删掉。Fed/ECB 只合并精确重叠 feed，speeches/calendar/BIS/IMF 等独有覆盖单独评估。</p>
+<p>生产已确认 agent cron 正在运行，因此下线前必须：</p>
+<ul>
+<li>盘点 JSON、静态报告和仓库外消费者；</li>
+<li>先迁移独有价值与告警；</li>
+<li>停 cron 和对应 status 监控；</li>
+<li>保留快照及回滚路径。</li>
+</ul>
+<h4>P1-3. 归档旧研究入口，overnight 只留一套</h4>
+<p><code>research/</code> 五进程不是 Web 必需，且当前生产未见常驻容器，可优先做代码和文档归档评估。overnight 若报告仍有人读，保留 v2 按需运行，并统一主平台 LLM 成本治理；否则不安排常驻或周期运行。</p>
+<p>不要误删 Web 主 app 内的 AI note/chat/digest/券商研报，它们不依赖上述旁路编排器。</p>
+<h4>P1-4. 资讯链路先去重和互斥，再谈删任务</h4>
+<ul>
+<li>入库只有 <code>(source, source_id)</code> 精确去重；已有 Simhash/<code>duplicate_of</code> 能力主要仍靠手工脚本。</li>
+<li>翻译选择集未排除 <code>duplicate_of</code>。</li>
+<li>即时正文抓取和 drain 都选 <code>full_content IS NULL</code>，最后 <code>force=True</code>，缺文章级 lease，可能重复抓取和覆盖。</li>
+</ul>
+<p>建议先 dry-run 评估近似去重误杀率，再让高成本下游过滤重复文章；正文/翻译增加原子 claim/lease。</p>
+<p><strong>不要删除 ingest+drain 或 trafilatura→Jina→LLM 降级链，它们分别承担低延迟、自愈和可用性。应补协调，不是删层。</strong></p>
+<h4>P1-5. 资讯源改为分级生命周期</h4>
+<p>从“源数量目标”转为：核心实时 / 低频价值 / 观察 / 退役。用当前生产数据评估增量、重复率、正文成功率、下游阅读和 LLM 成本，先降频再停调度，原始文章档案保留。</p>
+<h4>P1-6. 真实交易做明确产品决策</h4>
+<p>若平台核心是研究和模拟验证，可将真实交易降为可选模块、撤出默认菜单并关闭真实开关；若属于核心，则补齐风控配置到执行闭环、跨进程熔断和测试。任何情况下先确认真实账户、持仓、订单和 key，导出审计数据，不能为瘦身删除安全逻辑。</p>
+<h3>P2：渐进降低认知成本</h3>
+<ul>
+<li>清理未接线 service、 deprecated wrapper、旧前端 API/hooks；先查脚本、测试和仓库外调用。</li>
+<li>抽取 StrategyList/StrategyLibrary 的共享创建表单和参数映射，不合并两个不同职责页面。</li>
+<li>将标准 DataFrame ETL 与自定义多阶段 Job 拆成窄接口，消除空 provider 和 <code>NotImplementedError</code> stub。</li>
+<li>Digest 通知伴随记录与组合报告列表分流，避免 <code>file_path=None</code> 和状态语义进入通用 ReportBrowser。</li>
+<li>归档固定日期补数脚本、<code>redeploy2.sh</code> 等旁路入口和陈旧 pnpm lock；先核对 cron、alias 和 runbook。</li>
+<li>全局搜索短期收窄为“页面导航”，或复用现有 instrument/news API；不要保留永久空 mock 造成已支持搜索的错觉。</li>
+<li>核查 retail hot-symbols zset 是否真无消费者，再停调度观察；不能凭仓内无引用直接删。</li>
+</ul>
+<h2>五、不建议动的部分</h2>
+<ul>
+<li>不批量删除 Web 页面/router；名称相近不代表职责相同。</li>
+<li>不合并 Favorites、Pool、Portfolio，三者分别是轻量关注、目标组合和实际持仓。</li>
+<li>不把 Celery、scheduler、Redis 当成可随意关掉的附属服务。</li>
+<li>不合并模拟交易与真实交易账务模型。</li>
+<li>不删多 provider fallback、正文降级链、调度锁和备份/证书/site watchdog。</li>
+<li>不批量删除 scripts、测试 mock、历史 runbook 或报告镜像；应分类归档。</li>
+<li>不把“仓内无引用”直接等同于“生产零使用”，外部 notebook、Redis 消费者和手工流程可能不可见。</li>
+</ul>
+<h2>六、推荐执行顺序</h2>
+<h3>阶段 A：无业务下线止损</h3>
+<ul>
+<li>修正 demo 初始化引导，隔离危险脚本和凭据。</li>
+<li>标记旧 iOS、旧 research 入口和旁路部署脚本为 legacy。</li>
+<li>建立功能/运行时清单：消费者、产物、成本、所有者、回滚方式。</li>
+</ul>
+<h3>阶段 B：先兼容，再收敛客户端</h3>
+<ul>
+<li>完成本次 Web、旧 iOS、native 的强制改密兼容。</li>
+<li>做一次真实 macOS/iOS <code>xcodebuild</code> 和关键契约测试。</li>
+<li>归档旧 iOS；根据实际使用决定 native macOS 保留为 companion 还是 Web-only。</li>
+</ul>
+<h3>阶段 C：strangler 方式合并平行链路</h3>
+<ol>
+<li>新主链路功能对等。</li>
+<li>只读双跑或结果对比。</li>
+<li>迁移消费者和文档。</li>
+<li>停旧调度/入口。</li>
+<li>保留快照与回滚。</li>
+<li>一个完整业务周期无回归后删代码。</li>
+</ol>
+<h3>阶段 D：高成本可选模块决策</h3>
+<p>按四象限处理：高价值高复杂→保留并简化；低价值高复杂→优先退役；价值不确定→先停菜单/调度或降频；低价值低复杂→随维护清理。</p>
+<h2>七、最终建议</h2>
+<p><strong>推荐方案：Web 主端 + 核心后台 + 可选 macOS companion，退役旧 iOS 和旧 research 原型，agent 按源合并，overnight 按需单版本。</strong></p>
+<p>不建议现在做的事：</p>
+<ul>
+<li>为“只留 Web”而删除 scheduler/Celery/agent 的全部代码；</li>
+<li>继续给两套 iOS 同时加功能；</li>
+<li>追求 native 与 Web 全功能 parity；</li>
+<li>在没有消费者和回滚证据时硬删数据、表或采集源。</li>
+</ul>
+<p>最终退役门槛统一为：</p>
+<pre><code class="language-text">无消费者或替代链路已对等
++ 数据已导出
++ 依赖已盘点
++ 可回滚
++ 观察期无回归</code></pre>
+<p>缺少任何一项，都优先“停用/归档”，不要直接硬删除。</p>
+<h2>八、证据边界</h2>
+<ul>
+<li>本次生产核验只读查看了当前 <code>docker ps</code> 和 agent cron；未分析完整访问日志、数据库消费、账单或所有手工 shell 历史。</li>
+<li>原生端无遥测，外部用户和持续活跃未知。</li>
+<li>文件数、代码行和功能盘点是当前工作树静态快照，不代表可构建或已发布。</li>
+<li>历史 dev-notes 中的成本和运行状态只代表各自记录日期，未当作当前实测。</li>
+</ul>
+</body></html>
