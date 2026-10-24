@@ -80,6 +80,12 @@ expect(fallback.localizedDescription == "服务器错误 (500)", "non-JSON error
 let valid12 = "Abcdef123456"
 expect(valid12.count == 12, "test fixture must contain 12 characters")
 expect(PasswordPolicy.validate(valid12) == nil, "a valid 12-character password was rejected")
+let fiveFlags = String(repeating: "🇨🇳", count: 5) + "a1"
+expect(fiveFlags.unicodeScalars.count == 12, "flag fixture must contain 12 Unicode scalars")
+expect(
+    PasswordPolicy.validate(fiveFlags) == nil,
+    "iOS must count Unicode scalars like the backend, not extended grapheme clusters"
+)
 expect(PasswordPolicy.validate("") == "密码不能为空", "empty password must be rejected")
 expect(PasswordPolicy.validate("Abc123") != nil, "password shorter than 12 characters must be rejected")
 expect(PasswordPolicy.validate("Abcdefghijkl") != nil, "password without a digit must be rejected")

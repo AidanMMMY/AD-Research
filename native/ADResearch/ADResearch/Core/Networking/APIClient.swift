@@ -23,8 +23,9 @@ actor APIClient {
     private var sessionExpiredHandler: (@Sendable () -> Void)?
 
     /// 刷新成功后回调新令牌对（后端会轮换 refresh_token，
-    /// 对齐 web 注释：不持久化新 refresh_token 会话即死）
-    private var tokensUpdatedHandler: (@Sendable (_ accessToken: String, _ refreshToken: String) -> Void)?
+    /// 对齐 web 注释：不持久化新 refresh_token 会话即死）。
+    /// 持久化必须按请求顺序 await，防止旧回调覆盖后续改密签发的令牌。
+    private var tokensUpdatedHandler: (@Sendable (_ accessToken: String, _ refreshToken: String) async -> Void)?
 
     init(session: URLSession = .shared) {
         self.session = session
@@ -46,7 +47,9 @@ actor APIClient {
         sessionExpiredHandler = handler
     }
 
-    func setTokensUpdatedHandler(_ handler: (@Sendable (_ accessToken: String, _ refreshToken: String) -> Void)?) {
+    func setTokensUpdatedHandler(
+        _ handler: (@Sendable (_ accessToken: String, _ refreshToken: String) async -> Void)?
+    ) {
         tokensUpdatedHandler = handler
     }
 
@@ -84,7 +87,7 @@ actor APIClient {
                 let tokens = try await refreshTokensSingleFlight()
                 accessToken = tokens.accessToken
                 refreshToken = tokens.refreshToken
-                notifyTokensUpdated(access: tokens.accessToken, refresh: tokens.refreshToken)
+                await notifyTokensUpdated(access: tokens.accessToken, refresh: tokens.refreshToken)
             } catch {
                 // 刷新失败 = 会话死亡（对齐 web：清令牌 + 强制登出）
                 clearTokens()
@@ -194,11 +197,10 @@ actor APIClient {
         }
     }
 
-    private func notifyTokensUpdated(access: String, refresh: String) {
-        let handler = tokensUpdatedHandler
-        Task.detached {
-            handler?(access, refresh)
-        }
+    private func notifyTokensUpdated(access: String, refresh: String) async {
+        // 等待持久化完成再重放原请求。否则改密返回的新令牌可能先写入，
+        // 随后又被这里延迟的旧 refresh token 覆盖。
+        await tokensUpdatedHandler?(access, refresh)
     }
 
     // MARK: - 错误消息提取（FastAPI 错误信封）

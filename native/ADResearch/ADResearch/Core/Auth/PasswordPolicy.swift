@@ -4,8 +4,9 @@ import Foundation
 enum PasswordPolicy {
     static func validate(_ password: String) -> String? {
         guard !password.isEmpty else { return "密码不能为空" }
-        guard password.count >= 12 else { return "密码至少 12 位，且需包含英文字母和数字" }
-        guard password.count <= 64 else { return "密码长度不能超过 64 个字符" }
+        let characterCount = password.unicodeScalars.count
+        guard characterCount >= 12 else { return "密码至少 12 位，且需包含英文字母和数字" }
+        guard characterCount <= 64 else { return "密码长度不能超过 64 个字符" }
         guard password.utf8.count <= 72 else { return "密码过长，UTF-8 编码后不能超过 72 字节" }
 
         let scalars = password.unicodeScalars

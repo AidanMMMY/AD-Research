@@ -17,6 +17,57 @@ private func decode<T: Decodable>(_ type: T.Type, _ json: String) throws -> T {
     try JSONCoding.decoder.decode(T.self, from: Data(json.utf8))
 }
 
+private final class LockedRefreshStore: @unchecked Sendable {
+    private let lock = NSLock()
+    private var value = ""
+
+    func set(_ refresh: String) {
+        lock.lock()
+        value = refresh
+        lock.unlock()
+    }
+
+    func get() -> String {
+        lock.lock()
+        defer { lock.unlock() }
+        return value
+    }
+}
+
+private final class AuthenticationURLProtocol: URLProtocol {
+    override class func canInit(with request: URLRequest) -> Bool { true }
+    override class func canonicalRequest(for request: URLRequest) -> URLRequest { request }
+
+    override func startLoading() {
+        let path = request.url?.path ?? ""
+        let isInitialChangeRequest = path.hasSuffix("/auth/change-password") &&
+            request.value(forHTTPHeaderField: "Authorization") == "Bearer old-access"
+        let status: Int
+        let body: String
+        if path.hasSuffix("/auth/refresh") {
+            status = 200
+            body = #"{"access_token":"refresh-access","refresh_token":"refresh-2"}"#
+        } else if isInitialChangeRequest {
+            status = 401
+            body = #"{"detail":"expired"}"#
+        } else {
+            status = 200
+            body = #"{"detail":"密码修改成功","access_token":"change-access","refresh_token":"refresh-3"}"#
+        }
+        let response = HTTPURLResponse(
+            url: request.url!,
+            statusCode: status,
+            httpVersion: nil,
+            headerFields: ["Content-Type": "application/json"]
+        )!
+        client?.urlProtocol(self, didReceive: response, cacheStoragePolicy: .notAllowed)
+        client?.urlProtocol(self, didLoad: Data(body.utf8))
+        client?.urlProtocolDidFinishLoading(self)
+    }
+
+    override func stopLoading() {}
+}
+
 // Both login and /auth/me use JSONCoding.convertFromSnakeCase.
 do {
     let legacy = try decode(UserProfile.self, #"{"id":1,"username":"legacy","role":"user"}"#)
@@ -65,6 +116,12 @@ do {
 let valid12 = "Abcdef123456"
 expect(valid12.count == 12, "test fixture must contain 12 characters")
 expect(PasswordPolicy.validate(valid12) == nil, "a valid 12-character password was rejected")
+let fiveFlags = String(repeating: "🇨🇳", count: 5) + "a1"
+expect(fiveFlags.unicodeScalars.count == 12, "flag fixture must contain 12 Unicode scalars")
+expect(
+    PasswordPolicy.validate(fiveFlags) == nil,
+    "native must count Unicode scalars like the backend, not extended grapheme clusters"
+)
 expect(PasswordPolicy.validate("") == "密码不能为空", "empty password must be rejected")
 expect(PasswordPolicy.validate("Abc123") != nil, "password shorter than 12 characters must be rejected")
 expect(PasswordPolicy.validate("Abcdefghijkl") != nil, "password without a digit must be rejected")
@@ -94,6 +151,44 @@ expect(
     PasswordPolicy.validateChange(oldPassword: "old", newPassword: valid12, confirmation: valid12) == nil,
     "valid change-password input must pass"
 )
+
+// An expired access token forces refresh-2 before change-password returns refresh-3.
+// Delay the refresh persistence callback to reproduce the old detached-write race:
+// refresh-3 is the only valid token after the password change and must win last-write ordering.
+let orderingFinished = DispatchSemaphore(value: 0)
+Task {
+    do {
+        setenv("AD_API_BASE_URL", "https://unit.test/api/v1", 1)
+        let configuration = URLSessionConfiguration.ephemeral
+        configuration.protocolClasses = [AuthenticationURLProtocol.self]
+        let session = URLSession(configuration: configuration)
+        let client = APIClient(session: session)
+        let persistedRefresh = LockedRefreshStore()
+        await client.setTokens(accessToken: "old-access", refreshToken: "refresh-1")
+        await client.setTokensUpdatedHandler { _, refresh in
+            try? await Task.sleep(nanoseconds: 150_000_000)
+            persistedRefresh.set(refresh)
+        }
+
+        let endpoint = try Endpoint.authChangePassword(
+            ChangePasswordRequest(oldPassword: "old-pass", newPassword: valid12)
+        )
+        let response = try await client.send(endpoint, as: ChangePasswordResponse.self)
+        persistedRefresh.set(response.refreshToken)
+        try await Task.sleep(nanoseconds: 300_000_000)
+        expect(
+            persistedRefresh.get() == "refresh-3",
+            "a delayed refresh callback must not overwrite the newer change-password token"
+        )
+        session.invalidateAndCancel()
+    } catch {
+        failures.append("Refresh/change-password ordering check threw unexpectedly: \(error)")
+    }
+    orderingFinished.signal()
+}
+if orderingFinished.wait(timeout: .now() + 5) == .timedOut {
+    failures.append("Refresh/change-password ordering check timed out")
+}
 
 if failures.isEmpty {
     print("PASS: native authentication contract and password policy checks")

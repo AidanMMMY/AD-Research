@@ -87,6 +87,7 @@
 8. 部署日志 SSE 自定义认证的待改密绕过。
 9. 同标签页跨账号复用旧 `me` 缓存，以及强制改密页仍挂载 AI Drawer。
 10. 旧 iOS 与现行 native 客户端的强制改密恢复路径，避免只修 Web 后原生端契约失效。
+11. native 最终复审发现自动刷新令牌的 detached 回写可能覆盖改密新令牌；改为等待持久化后再重放请求，并以模拟 401→refresh→改密的延迟回调测试完成红绿验证。两套 Swift 客户端同时将密码长度改为 Unicode scalar 计数，与后端 code point 口径一致。
 
 ## 5. 验证记录
 
@@ -97,7 +98,7 @@
 - 前端 `check:ci`：stylelint、TypeScript、Vite production build 通过；本次改动源文件与测试的 ESLint 零 warning。全仓 `npm run lint` 仍会被未改动文件的既有 warning 阻断，不能据此宣称全仓 ESLint 通过。
 - 前端 Vitest：19 个文件、96 tests 全绿。
 - 旧 iOS：standalone 认证 DTO/端点/密码策略测试通过，全部 Swift 源码 `swiftc -parse` 通过。
-- native：standalone 认证 DTO/端点/密码策略测试通过，全部 Swift 源码 `swiftc -parse` 通过；复用 CLT 打包流程剥除 `#Preview` 后，完整 macOS 应用源码以 `swiftc` 编译通过。
+- native：standalone 认证 DTO/端点/密码策略测试通过，全部 Swift 源码 `swiftc -parse` 通过；复用 CLT 打包流程剥除 `#Preview` 后，完整 macOS 应用源码以 `swiftc` 编译通过。新增模拟 access 过期→refresh→改密的延迟持久化回归测试，验证改密令牌不会被旧刷新回调覆盖。
 - Alembic：单一 head `b3c5d7e9f1a2`。
 - ruff、black、`git diff --check` 通过。
 
@@ -113,6 +114,7 @@
 - 管理员重置后会设置强制改密标志，因此旧 access 即使未过期，也会被普通 API 的待改密检查以 403 拒绝。
 - 一次性密码弹窗关闭后无法再次查看；如未保存，只能再次重置。
 - 原生端未执行完整 `xcodebuild`、iOS SDK 编译、模拟器/真机 UI 或真实后端联调；当前验证不替代这些发布前验收。native 离线恢复可展示本地 Shell，但在线 API 仍由后端强制门控。
+- 旧 `ios/ADResearch` 的通用 `refreshTokenIfNeeded` 既有实现只持久化新 access token，未保存后端轮换的新 refresh token；本次未扩大重写该归档候选客户端，若继续保留维护需单独修复并做完整会话验收。
 - 生产部署需要重建 backend 镜像并执行 Alembic 迁移；部署后验证创建、登录、强制改密、新令牌刷新及管理 API 恢复访问的完整链路。原生客户端需另行构建/发布，不随后端部署自动更新。
 
 ## 7. 相关文档
