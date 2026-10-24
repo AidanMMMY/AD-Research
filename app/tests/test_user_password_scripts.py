@@ -16,7 +16,7 @@ from scripts.create_user import create_user as script_create_user
 from scripts.reset_user_password import reset_password as script_reset_password
 
 OLD_PASSWORD = "Old-passw0rd123"
-NEW_PASSWORD = "N3w-passw0rd123"
+NEW_PASSWORD = "N3w-passw0rd123"  # gitleaks:allow
 
 
 def _seed_user(db_session, username: str = "script_user") -> User:

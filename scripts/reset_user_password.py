@@ -8,7 +8,7 @@ Usage:
     python scripts/reset_user_password.py admin Aidan
 
     # Non-interactive
-    python scripts/reset_user_password.py admin Aidan --password 'N3w-passw0rd123'
+    python scripts/reset_user_password.py admin Aidan --password '<NEW_PASSWORD>'
 """
 
 import argparse
