@@ -119,10 +119,6 @@
   border-radius: 50%;
 }
 
-.digest-toc__dot--degraded {
-  background: var(--color-warning);
-}
-
 .digest-toc__dot--failed {
   background: var(--color-error);
 }

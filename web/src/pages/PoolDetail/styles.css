@@ -48,3 +48,10 @@
     transform: none;
   }
 }
+
+/* 再平衡告警列表（PoolAnalytics.rebalance_alerts，2026-10-25 契约修复后
+   首次真实展示）：收紧 Alert description 里 <ul> 的默认缩进。 */
+.pool-rebalance-list {
+  margin: 0;
+  padding-left: var(--space-4, 16px);
+}

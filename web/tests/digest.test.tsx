@@ -73,10 +73,12 @@ const REPORT: DigestReport = {
   summary_md: '- 标普 500 收涨 1.2%\n- 北向资金净流入 80 亿',
   content_md:
     '开场段落：隔夜海外风险偏好回升。\n\n## 全球市场\n美股三大指数齐涨。\n\n## 宏观数据\n美债收益率回落。\n\n## 资金流\n北向净流入 80 亿。',
+  // 分节契约（2026-10-25 对齐后端 generator）：status 只有
+  // 'success' | 'failed'，且没有 retries 字段。
   sections_json: [
-    { key: 'global', title: '全球市场', status: 'ok', chars: 1200, retries: 0 },
-    { key: 'macro', title: '宏观数据', status: 'degraded', chars: 300, retries: 2 },
-    { key: 'flow', title: '资金流', status: 'ok', chars: 900, retries: 0 },
+    { key: 'global', title: '全球市场', status: 'success', chars: 1200 },
+    { key: 'macro', title: '宏观数据', status: 'failed', chars: 300 },
+    { key: 'flow', title: '资金流', status: 'success', chars: 900 },
   ],
   llm_model: 'minimax-m3',
   finished_at: '2026-08-02T22:30:00+00:00',
@@ -189,8 +191,8 @@ describe('Digest 页', () => {
     // 章节锚点 id 存在，可滚动定位
     expect(document.getElementById('digest-sec-0')).toBeTruthy();
     expect(document.getElementById('digest-sec-2')).toBeTruthy();
-    // 降级章节在目录里有状态点
-    expect(document.querySelector('.digest-toc__dot--degraded')).toBeTruthy();
+    // 失败章节在目录里有状态点（分节只有 success/failed 两种状态）
+    expect(document.querySelector('.digest-toc__dot--failed')).toBeTruthy();
   });
 
   it('?date= 404：空态「今日研报生成中」+「查看最近一篇」回落 latest', async () => {

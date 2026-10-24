@@ -6,7 +6,7 @@ import { Button } from 'antd';
 import { LeftOutlined, RightOutlined, ReadOutlined, UnorderedListOutlined } from '@ant-design/icons';
 import './styles.css';
 import { digestApi, isDigestNotFound, digestRetry, DIGEST_STALE_TIME } from '@/api/digest';
-import type { DigestReport, DigestStatus } from '@/api/digest';
+import type { DigestReport, DigestSectionStatus, DigestStatus } from '@/api/digest';
 import PageShell from '@/components/PageShell';
 import PageHeader from '@/components/PageHeader';
 import Panel from '@/components/Panel';
@@ -25,7 +25,7 @@ import { formatDateTime } from '@/utils/datetime';
  *   桌面端正文轨收敛到 ~720px 居中（PageShell reading 语义在
  *   本页内联实现，因为还需要给目录留侧栏列）。
  * - 目录从 content_md 的 `##` 标题提取锚点；sections_json 仅用于
- *   给对应章节标注降级/失败状态（按 title 匹配）。
+ *   给对应章节标注失败状态（按 title 匹配，分节只有 success/failed）。
  * - 历史导航：上一篇/下一篇 = by-date ±1 天，URL ?date= 直达。
  */
 
@@ -97,8 +97,9 @@ interface TocProps {
 
 function TocList({ sections, report }: TocProps) {
   // sections_json 仅作状态角标来源（按 title 匹配），锚点以 content_md 为准。
+  // 后端分节状态只有 success/failed；「降级」语义在整篇 status=partial 徽标上。
   const statusByTitle = useMemo(() => {
-    const map = new Map<string, string>();
+    const map = new Map<string, DigestSectionStatus>();
     for (const s of report.sections_json ?? []) {
       map.set(s.title, s.status);
     }
@@ -118,7 +119,6 @@ function TocList({ sections, report }: TocProps) {
               onClick={() => scrollToAnchor(sec.anchor)}
             >
               <span className="digest-toc__title">{sec.title}</span>
-              {st === 'degraded' && <span className="digest-toc__dot digest-toc__dot--degraded" title="数据降级" />}
               {st === 'failed' && <span className="digest-toc__dot digest-toc__dot--failed" title="生成失败" />}
             </button>
           </li>

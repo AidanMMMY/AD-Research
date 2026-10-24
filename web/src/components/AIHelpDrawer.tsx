@@ -1,4 +1,59 @@
 import { useRef, useEffect, useState } from 'react';
+
+/**
+ * 输入行（受控草稿独立成组件）：AIHelpDrawer 以 key={sessionId} 挂载它，
+ * 每次 open() 新会话时重挂载即清空草稿——替代原先 useEffect 里的
+ * setInput('')（react-hooks/set-state-in-effect 要求 effect 内不同步 setState）。
+ */
+function Composer({
+  aiAvailable,
+  loading,
+  isMobile,
+  onSend,
+}: {
+  aiAvailable: boolean;
+  loading: boolean;
+  isMobile: boolean;
+  onSend: (content: string) => void;
+}) {
+  const [input, setInput] = useState('');
+
+  const handleSend = () => {
+    if (!input.trim() || loading) return;
+    const content = input.trim();
+    setInput('');
+    onSend(content);
+  };
+
+  return (
+    <div
+      className={`ai-drawer__input-row ${isMobile ? 'ai-drawer__input-row--sheet' : ''}`}
+    >
+      <Input.TextArea
+        value={input}
+        onChange={(e) => setInput(e.target.value)}
+        onPressEnter={(e) => {
+          if (!e.shiftKey) {
+            e.preventDefault();
+            handleSend();
+          }
+        }}
+        placeholder={aiAvailable ? '输入问题...（Shift+Enter 换行，Enter 发送）' : 'AI 未配置，无法提问'}
+        autoSize={{ minRows: 1, maxRows: 4 }}
+        disabled={loading || !aiAvailable}
+        className="ai-drawer__input"
+      />
+      <Button
+        type="primary"
+        icon={<SendOutlined />}
+        onClick={handleSend}
+        loading={loading}
+        disabled={!input.trim() || !aiAvailable}
+        className="ai-drawer__send"
+      />
+    </div>
+  );
+}
 import { Drawer, Input, Button, Tag, Space, Alert } from 'antd';
 import {
   RobotOutlined,
@@ -9,7 +64,7 @@ import {
 } from '@ant-design/icons';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
-import { useAIHelp } from '@/hooks/useAIHelp';
+import { useAIHelp, useAIHelpStream } from '@/hooks/useAIHelp';
 import { useAIStatus } from '@/components/AISetupBanner';
 import { useSettingsStore } from '@/stores/settings';
 import { useIsMobile } from '@/hooks/useBreakpoint';
@@ -62,16 +117,17 @@ export default function AIHelpDrawer() {
     messages,
     isLoading,
     error,
-    steps,
-    streamedText,
+    sessionId,
     close,
     sendMessage,
     retryLast,
   } = useAIHelp();
+  // steps/streamedText 是流式期间每个 SSE chunk 都变化的高频状态，
+  // 单独订阅流式 context——本组件是唯一需要跟随打字机动画的消费者。
+  const { steps, streamedText } = useAIHelpStream();
   const { data: aiStatus, isLoading: aiStatusLoading } = useAIStatus();
   const { mode } = useSettingsStore();
   const isMobile = useIsMobile();
-  const [input, setInput] = useState('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const aiAvailable = aiStatus?.available ?? false;
@@ -90,19 +146,6 @@ export default function AIHelpDrawer() {
       behavior: reduceMotion ? 'auto' : 'smooth',
     });
   }, [messages, isLoading]);
-
-  useEffect(() => {
-    if (isOpen) {
-      setInput('');
-    }
-  }, [isOpen, context?.pageType]);
-
-  const handleSend = async () => {
-    if (!input.trim() || isLoading) return;
-    const content = input.trim();
-    setInput('');
-    await sendMessage(content);
-  };
 
   const handleQuickQuestion = (question: string) => {
     // 与 quick-tag 的 --disabled 视觉态对齐：AI 未配置时点击不应发出请求
@@ -208,33 +251,15 @@ export default function AIHelpDrawer() {
     </div>
   ) : null;
 
+  // key=session：open() 建新会话时重挂载 Composer，草稿随之清空
   const inputRow = (
-    <div
-      className={`ai-drawer__input-row ${isMobile ? 'ai-drawer__input-row--sheet' : ''}`}
-    >
-      <Input.TextArea
-        value={input}
-        onChange={(e) => setInput(e.target.value)}
-        onPressEnter={(e) => {
-          if (!e.shiftKey) {
-            e.preventDefault();
-            handleSend();
-          }
-        }}
-        placeholder={aiAvailable ? '输入问题...（Shift+Enter 换行，Enter 发送）' : 'AI 未配置，无法提问'}
-        autoSize={{ minRows: 1, maxRows: 4 }}
-        disabled={isLoading || !aiAvailable}
-        className="ai-drawer__input"
-      />
-      <Button
-        type="primary"
-        icon={<SendOutlined />}
-        onClick={handleSend}
-        loading={isLoading}
-        disabled={!input.trim() || !aiAvailable}
-        className="ai-drawer__send"
-      />
-    </div>
+    <Composer
+      key={sessionId ?? 'none'}
+      aiAvailable={aiAvailable}
+      loading={isLoading}
+      isMobile={isMobile}
+      onSend={sendMessage}
+    />
   );
 
   // ── Mobile: global BottomSheet (方向 D) ────────────────────────────

@@ -15,8 +15,12 @@ import client from './client';
 /** 报告生成状态：partial = 有章节降级/缺失。 */
 export type DigestStatus = 'pending' | 'running' | 'success' | 'partial' | 'failed';
 
-/** 单章节采集/生成状态。 */
-export type DigestSectionStatus = 'ok' | 'degraded' | 'failed';
+/**
+ * 单章节采集/生成状态。后端 digest generator 只写 'success' / 'failed'
+ * （app/services/digest/generator.py）；「降级」只体现在整篇 status=partial。
+ * 2026-10-25 契约对齐：删除前端臆造的 'ok'/'degraded' 与 retries 字段。
+ */
+export type DigestSectionStatus = 'success' | 'failed';
 
 export interface DigestListItem {
   id: number;
@@ -41,7 +45,6 @@ export interface DigestSection {
   title: string;
   status: DigestSectionStatus;
   chars: number;
-  retries: number;
 }
 
 /** 完整报告（/latest 与 /by-date 返回结构）。 */

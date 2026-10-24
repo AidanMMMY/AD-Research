@@ -33,10 +33,6 @@ export interface AIHelpState {
   isLoading: boolean;
   error: string | null;
   sessionId: number | null;
-  /** 步骤状态机（S3） */
-  steps: Step[];
-  /** 打字机渲染中的临时文本（S3） */
-  streamedText: string;
 }
 
 export interface AIHelpContextValue extends AIHelpState {
@@ -44,6 +40,19 @@ export interface AIHelpContextValue extends AIHelpState {
   close: () => void;
   sendMessage: (content: string) => Promise<void>;
   retryLast: () => Promise<void>;
+}
+
+/**
+ * 高频流式状态（S3）。每个 SSE chunk 都会更新 streamedText、步骤推进
+ * 也会更新 steps——放在独立 context（AIHelpStreamContext）里按需订阅，
+ * 避免打字机/步骤动画把所有 useAIHelp 消费者（全站页面 + HelpPopover）
+ * 一起拖进级联重渲染（2026-10-25 P0 修复）。
+ */
+export interface AIHelpStreamValue {
+  /** 步骤状态机（S3） */
+  steps: Step[];
+  /** 打字机渲染中的临时文本（S3） */
+  streamedText: string;
 }
 
 export interface HelpTriggerProps {

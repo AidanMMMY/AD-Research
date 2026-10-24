@@ -134,7 +134,7 @@ export default function PoolDetail() {
       ),
     },
     { title: '加入时间', dataIndex: 'added_at', render: (v: string) => v ? v.slice(0, 10) : '-' },
-    { title: '备注', dataIndex: 'note', render: (v?: string) => v || '-' },
+    { title: '备注', dataIndex: 'notes', render: (v?: string | null) => v || '-' },
     {
       title: '操作',
       key: 'action',
@@ -159,6 +159,27 @@ export default function PoolDetail() {
     { title: '夏普', value: perf?.sharpe_1y, suffix: undefined, color: 'detail-kpi-accent' },
     { title: '最大回撤', value: perf?.max_drawdown_1y != null ? perf.max_drawdown_1y * 100 : undefined, suffix: '%', color: 'detail-kpi-fall' },
   ];
+
+  // 再平衡告警（PoolAnalyticsResponse.rebalance_needed / rebalance_alerts，
+  // 2026-10-25 契约修复前前端类型把 rebalance_needed 误建成数组，从未展示过）。
+  const rebalanceAlert = analytics?.rebalance_needed && analytics.rebalance_alerts.length > 0 ? (
+    <Alert
+      className="ad-mb-3"
+      type="warning"
+      showIcon
+      message="组合偏离目标权重，建议再平衡"
+      description={
+        <ul className="pool-rebalance-list">
+          {analytics.rebalance_alerts.map((a) => (
+            <li key={a.etf_code}>
+              {a.etf_code} {a.name_zh || a.etf_name || ''}：目标 {a.target_weight.toFixed(1)}%，实际{' '}
+              {a.actual_weight.toFixed(1)}%（偏离 {a.deviation.toFixed(1)} 个百分点）
+            </li>
+          ))}
+        </ul>
+      }
+    />
+  ) : null;
 
   const tabItems = [
     {
@@ -284,8 +305,14 @@ export default function PoolDetail() {
       </Button>
       <PageHeader
         eyebrow="标的池"
-        title={pool?.name || '标的池详情'}
-        description={editingMeta ? undefined : `${pool?.description || '暂无描述'} · ${pool?.members?.length || 0} 只标的`}
+        title={pool?.name || analytics?.pool_name || '标的池详情'}
+        description={
+          editingMeta
+            ? undefined
+            : `${pool?.description || '暂无描述'} · ${
+                analytics?.member_count ?? pool?.members?.length ?? 0
+              } 只标的`
+        }
         extra={
           editingMeta ? (
             <Button onClick={() => setEditingMeta(false)}>取消</Button>
@@ -332,6 +359,8 @@ export default function PoolDetail() {
           </div>
         ))}
       </ResponsiveGrid>
+
+      {rebalanceAlert}
 
       <Tabs items={tabItems} />
     </PageShell>

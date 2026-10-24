@@ -1,11 +1,18 @@
-import { createContext, useState, useCallback, useRef } from 'react';
+import { createContext, useState, useCallback, useRef, useMemo } from 'react';
 import type { AxiosError } from 'axios';
 import { chatApi } from '@/api/chat';
-import type { AIHelpContextValue, HelpContext, HelpMessage } from '@/types/help';
+import type { AIHelpContextValue, AIHelpStreamValue, HelpContext, HelpMessage } from '@/types/help';
 import { getSystemPrompt } from '@/utils/helpPrompts';
 import type { Step } from '@/hooks/useStepStream';
 
 export const AIHelpContext = createContext<AIHelpContextValue | null>(null);
+
+/**
+ * 高频流式 context：steps / streamedText 在流式回答期间每个 SSE chunk
+ * 更新一次。拆出独立 context 后，只有订阅它的组件（AIHelpDrawer）跟随
+ * 重渲染；只取 open/close 等静态动作的页面与 HelpPopover 不再级联。
+ */
+export const AIHelpStreamContext = createContext<AIHelpStreamValue | null>(null);
 
 interface AIHelpProviderProps {
   children: React.ReactNode;
@@ -312,24 +319,35 @@ export function AIHelpProvider({ children }: AIHelpProviderProps) {
     }
   }, [sessionId, startStep, finishStep, resetSteps, fallbackTypewriter]);
 
-  const value: AIHelpContextValue = {
-    isOpen,
-    context,
-    messages,
-    isLoading,
-    error,
-    sessionId,
-    steps,
-    streamedText,
-    open,
-    close,
-    sendMessage,
-    retryLast,
-  };
+  // 低频 context（开关/消息列表/会话/错误 + 全部动作）。流式期间这些
+  // 字段都不变，useMemo 保持对象身份稳定 → 全站 useAIHelp 消费者不重渲染。
+  const value = useMemo<AIHelpContextValue>(
+    () => ({
+      isOpen,
+      context,
+      messages,
+      isLoading,
+      error,
+      sessionId,
+      open,
+      close,
+      sendMessage,
+      retryLast,
+    }),
+    [isOpen, context, messages, isLoading, error, sessionId, open, close, sendMessage, retryLast],
+  );
+
+  // 高频流式 context：仅 AIHelpDrawer 订阅，SSE chunk 只驱动它自身。
+  const streamValue = useMemo<AIHelpStreamValue>(
+    () => ({ steps, streamedText }),
+    [steps, streamedText],
+  );
 
   return (
     <AIHelpContext.Provider value={value}>
-      {children}
+      <AIHelpStreamContext.Provider value={streamValue}>
+        {children}
+      </AIHelpStreamContext.Provider>
     </AIHelpContext.Provider>
   );
 }
