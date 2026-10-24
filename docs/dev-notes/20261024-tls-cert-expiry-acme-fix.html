@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="zh-CN"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>2026-10-24 TLS 证书过期事故 + acme.sh 上线</title>
+<style>
+body{font-family:-apple-system,'PingFang SC',sans-serif;max-width:900px;margin:40px auto;padding:0 20px;line-height:1.7;color:#1a1a2e}
+h1{border-bottom:2px solid #4a6cf7;padding-bottom:8px}
+h2{margin-top:32px;color:#2b3a67}
+h3{color:#3a4a77}
+table{border-collapse:collapse;width:100%;margin:12px 0}
+th,td{border:1px solid #ddd;padding:6px 10px;font-size:14px}
+th{background:#f4f6fb}
+blockquote{border-left:4px solid #4a6cf7;margin:0;padding:4px 16px;background:#f8f9ff;color:#555}
+code{background:#f0f2f8;padding:1px 5px;border-radius:4px;font-size:13px}
+pre{background:#f6f8fa;padding:12px;border-radius:6px;overflow-x:auto}
+pre code{background:none;padding:0}
+ol,ul{padding-left:24px}
+</style></head><body>
+<h1>2026-10-24 TLS 证书过期致全站断访事故 + acme.sh 自动续期上线</h1>
+<h2>事故</h2>
+<ul>
+<li><strong>现象</strong>：用户报「admin 登录不了」。实际是全站 HTTPS 不可用——
+  浏览器被证书错误页拦死，登录页根本打不开。</li>
+<li><strong>根因</strong>：阿里云免费 DV 证书（DigiCert Encryption Everywhere，
+  90 天期）2026-07-03 手动安装，<strong>2026-09-30 到期</strong>，已过期 24 天。
+  服务器上没有任何续期机制（无 acme.sh / certbot / cron）。
+  这是 SSL 第二次咬人（第一次：2026-08-18 游离 ssl 目录 +
+  私钥在 git 的 CRITICAL 陷阱）。</li>
+<li><strong>排查路径</strong>（以后照抄）：本地 curl HTTP 000 → 容器全绿 →
+  ECS 本机 curl 公网域名也 000 → <code>curl -sv</code> 看 TLS 握手 →
+  <code>SSL certificate verify result: certificate has expired (10)</code>。
+  口诀：<strong>登录不了先别查账号，curl -sv 看证书。</strong></li>
+</ul>
+<h2>修复：acme.sh + Let's Encrypt（永久解决）</h2>
+<pre><code class="language-bash"># 1. webroot 预热：nginx.conf 的 80 端口 server 块早已预留
+#    location /.well-known/ { alias /etc/nginx/ssl/.well-known/; }
+#    宿主机映射 /data/alloy-research/ssl -&gt; /etc/nginx/ssl
+mkdir -p /data/alloy-research/ssl/.well-known/acme-challenge
+
+# 2. 坑 1：/data/alloy-research/ssl 是 drwx------(501)，nginx worker
+#    (uid 101) 无法穿越 → 403。chmod 711（可穿越、不可列举、私钥安全）
+chmod 711 /data/alloy-research/ssl
+
+# 3. 安装 acme.sh（自带续期 cron）
+curl https://get.acme.sh | sh -s email=admin@alloyresearch.net
+
+# 4. 签发。坑 2：-w webroot 会被 acme.sh 自己拼上
+#    /.well-known/acme-challenge——传 /data/alloy-research/ssl/.well-known
+#    会写出双重目录 .../.well-known/.well-known/... 致 LE 404。
+#    正确：-w /data/alloy-research/ssl
+/root/.acme.sh/acme.sh --issue --server letsencrypt \
+  -d www.alloyresearch.net -d alloyresearch.net \
+  -w /data/alloy-research/ssl -k 2048
+
+# 5. 安装 + reload 钩子（旧证书先备份成 .expired-20260930.bak）
+/root/.acme.sh/acme.sh --install-cert -d www.alloyresearch.net \
+  --fullchain-file /data/alloy-research/ssl/www.alloyresearch.net.pem \
+  --key-file /data/alloy-research/ssl/www.alloyresearch.net.key \
+  --reloadcmd &quot;docker exec alloyresearch-nginx nginx -s reload&quot;
+</code></pre>
+<ul>
+<li>续期：acme.sh cron 已自动安装（<code>25 5,11,17,23 * * *</code>），
+   Let's Encrypt 90 天期，ARI 建议窗口 2026-12-23 前后，续期后
+  自动跑 reloadcmd reload nginx。<strong>无需再人工干预。</strong></li>
+<li>阿里云控制台的免费证书流程从此废弃（每 90 天手动重签的模式
+  已经咬了两次）。</li>
+</ul>
+<h2>验证</h2>
+<ul>
+<li><code>https://www.alloyresearch.net/health</code> 全绿（db/redis/scheduler/
+  data/llm 全 ok，git_sha 023f98e）</li>
+<li>登录接口对错误密码正确返回 401——接口从未坏过</li>
+<li>证书链：Let's Encrypt R10/R11，有效期至 2027-01 下旬</li>
+</ul>
+<h2>遗留</h2>
+<ul>
+<li>若用户之后仍报密码错误，走 <code>docs/dev-notes/20260701-admin-password-reset-runbook.md</code>
+  （docker exec 重置，禁止裸 SQL UPDATE password_hash）。</li>
+<li>旧证书备份 <code>.expired-20260930.bak</code> / <code>.key.bak</code> 留在
+  /data/alloy-research/ssl/，确认无回滚需要后可删。</li>
+<li>site_watchdog 目前只拨测 HTTP 层，建议加「证书剩余天数 &lt; 14 天」
+  告警（acme.sh 已兜底，告警是第二道保险）。</li>
+</ul>
+</body></html>
