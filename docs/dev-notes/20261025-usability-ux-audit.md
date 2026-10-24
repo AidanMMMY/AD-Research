@@ -1,0 +1,239 @@
+# 2026-10-25 可用性与用户体验全面审计报告（web/ 为主）
+
+> 审计角色：独立系统审计 agent。硬约束遵守情况：未修改任何源代码、未 commit/push、未写知识库 vault；本文件与同名 .html 为唯一产物。
+> 基线：main `6047e04`。方法：静态走查 web/src（53 页）+ 后端错误响应对照 + `npm run build` 复验；未跑全量 pytest（按任务约束）。
+> 范围：可用性 / 用户体验流程 / 一致性 / 可访问性 / 性能体验 / 健壮性对体验的影响 / 数据可信度体验。**法律与版权风险明确排除**。
+> 与既有四份摸底报告（20260701 平台逻辑审计、20260825 UI 一致性大修、20261025 前端摸底、20261025 后端摸底）只引用不重复，边界见 §五。
+
+> ⚠️ **并发修改警告（重要）**：审计执行期间，另一会话在同一工作树上进行未提交的 reset-password WIP（`git status` 显示 14 个文件 M/??，含 `app/api/v1/auth.py`、`web/src/pages/ResetPassword.tsx`(untracked)、`web/src/pages/News/index.tsx`(M) 等）。此刻 working tree 的 `tsc` 报 2 个错误（TS6133 News/index.tsx:15；TS2369 ResetPassword.tsx:261）。经 `git show 6047e04:` 逐一核实：**两处错误均不在 HEAD**（HEAD 的 News/index.tsx 中 Button 有 1 处使用；ResetPassword.tsx 在 HEAD 不存在）。本报告结论以 HEAD 语义为准；涉及上述 8 个被并发修改的 web 文件的 file:line 可能存在漂移，均已尽量给出 grep 佐证。
+
+---
+
+## 一、总体评分（1-10）
+
+| 维度 | 得分 | 一句话依据 |
+|---|---|---|
+| 可用性·错误恢复路径 | **5.5** | 42/53 页面无 `isError` 分支：后端 5xx/断网被渲染成「暂无数据」空表；但 ErrorState（错误不能伪装成空态）组件已存在，Dashboard 有满分示范（Dashboard/index.tsx:213） |
+| 可用性·加载态与骨架屏 | **6.0** | `isLoading` 覆盖 44/53 页良好；但路由级 Suspense 兜底是纯文本「加载中...」（routes.tsx:89），Skeleton 仅 5 个文件使用 |
+| 可用性·表单校验与错误文案 | **7.5** | 登录错误四分类（401/5xx/断网/其他）+ 邮箱未验证直达重发页是范本（Login.tsx:58-77）；但全站 27 处「XX失败」泛化 toast 不带原因 |
+| 可用性·键盘可达与焦点管理 | **7.0** | ⌘K 面板显式 WCAG 2.4.3 焦点回归（CommandPalette.tsx:113）+ useFocusRestore；aria/tabIndex/键盘处理有铺量（228/52/67 处）；但 a11y 测试 0 真实页面、3 处 clickableRow 键盘不可达存量（引用 20261025 FE P1-5） |
+| 可用性·移动端适配 | **6.5** | Shell <768px 抽屉导航 + 47 文件 useIsMobile 分支；抽查 10 个重点页：Dashboard 5 断点较好，PoolDetail/BacktestList 仅 1 断点，Login/Register 页面级 0 断点 |
+| 可用性·深链与刷新 | **8.0** | 14 个列表页筛选状态进 URL（useSearchParams）；旧路径 /etfs、/stocks、/crypto/:code 全部 301 保深链；News 详情抽屉保深链路由 |
+| UX·核心工作流完整度 | **7.5** | 建池→加成员→回测→信号链路完整且每步有 toast 反馈；但回测引擎在 HTTP 请求内同步执行（后端摸底 P2-3）+ 前端 30s 超时 → 长回测必然假报「回测失败」 |
+| UX·信息架构与导航效率 | **7.5** | 40 个菜单项分 10 组（home/market/screen/research/macro/quant/trade/learn/ops/admin），命名全中文统一；⌘K+全局搜索兜底；核心功能 ≤2 步可达 |
+| UX·空状态引导 | **8.0** | EmptyState 用于 62 文件、多数带引导动作（如「在详情页点击 ★ 加入自选」）；少数死寂空态（「暂无重要资讯」无描述无动作） |
+| UX·反馈及时性 | **8.0** | mutation 普遍有 message.success/error + 行级 loading（PoolList 删除按钮按 variables 精确 loading）+ Popconfirm 二次确认 |
+| 一致性 | **7.0** | 20260825 口诀基本收敛（复核 ≤11px 存量 22 处、hex 字面量 66 处集中于 10 文件图表色）；数字/日期格式碎片化：200 处裸 `toFixed(` vs 格式化助手仅 5 文件采用 |
+| 可访问性 | **5.5** | 亮色主题 muted 文本在 elevated 背景约 4.4:1 踩 AA 线（dark 主题已修且有注释）；axe 仅覆盖 3 个 fixture（CommandCenterFixture/DetailDrawer/AppLayout），0 真实页面；prefers-reduced-motion 有 49 处引用（正面） |
+| 性能体验 | **6.5** | bundle 结构健康（引用同日 FE 摸底实测：dist 5.0MB、入口 gzip 48KB）；已知反模式（columns 无 memo / Favorites 3s 重渲染 / sparkline 请求风暴）的体感评估见 §3.6 |
+| 健壮性对体验的影响 | **6.0** | SSE 指数退避+连接态暴露（Favorites/TickerTape）；token 刷新队列实现正确；但会话过期走 `window.location.href='/login'` 静默踢出、无提示、无 returnTo；全站 0 处 navigator.onLine 离线感知 |
+| 数据可信度体验 | **6.0** | ETL 状态/资讯健康度页对普通用户开放（routes.tsx:202,204）；DataFreshnessHint 设计优秀但仅 3 文件采用；Dashboard/InstrumentList 消费 SSE 却不显示 isConnected → 行情停更无感知 |
+
+**综合：6.9 / 10 ——「基元已备齐、收尾未完成」**：平台拥有一流的 UX 基元（ErrorState/EmptyState/DataFreshnessHint/⌘K/SSE 退避/登录错误分类），但**推广率不足**——异常路径的「最后一公里」在大约 8 成页面上缺失。修掉 Top10 大多是模板化推广工作，不需要新架构。
+
+
+---
+
+## 二、按用户旅程组织的发现
+
+严重度定义：P0=大面积阻断核心任务或直接误导决策；P1=高频路径上明显伤害体验；P2=可感知的质量缺陷；P3=打磨项。
+
+### 旅程 A：新用户首登（/login → 强制改密 → 首页看板 → 找到第一条有用信息）
+
+**A-1 登录错误文案分层是范本，应沉淀为全站错误规范**（正面发现）
+- 场景：密码输错 / 后端 500 / 断网 / 邮箱未验证。
+- 现状：Login.tsx:58-77 将 401（「用户名或密码错误」）、5xx（「服务器错误，请稍后再试」）、无状态码（「无法连接到服务器，请检查网络」）、403+email not verified（「这个账号还没完成邮箱验证，先去验证一下邮箱」并直接导航到可重发的验证页）区分处理，注释里还记录了 2026-07-01 把 500 错折叠成「密码不正确」掩盖真实 bug 的教训。
+- 期望：保持，并把这套「状态码→人话→下一步动作」模式推广到其余 27 处泛化 toast（见 E-4）。
+
+**A-2 自助注册/验证体验完整**（正面发现）
+- Register.tsx:116 防枚举（邮箱已注册仍回 201 统一提示「验证邮件已发出」）；RegisterVerify.tsx:16-188 OTP 6 位、`?verified=0&reason=` 魔法链接结果直渲染、验证完成自动登录、环形倒计时重发（commit 6047e04）。
+
+**A-3 首屏零数据不死寂，但存在孤例**（P3）
+- Dashboard/index.tsx:683「暂无自选股 / 在详情页点击 ★ 加入自选」带引导动作（好）；:735「暂无重要资讯」无 description 无 action（死寂空态孤例）。
+- 修复：补一句「重要资讯由每日 AI 研报生成，明早 06:30 可见」类说明 + 跳转 Digest 的动作。
+
+**A-4 新用户引导有全局 5 步 Tour**（正面发现）
+- OnboardingTour.tsx:10 全局 5 步首访引导，挂在 AppLayout.tsx:1034；侧边栏还有 density 切换、学习模式提示（AppLayout.tsx 头注释）。
+
+### 旅程 B：找信息与导航（菜单 / ⌘K / 搜索 / 深链 / 移动端）
+
+**B-1 深链与回退行为整体优秀**（正面发现）
+- 14 个列表/详情页用 useSearchParams 把筛选条件写进 URL（InstrumentList/News/BacktestList/Screen/Digest/Macro/AIChat 等），刷新/分享/回退不丢状态；旧路径 /etfs→/instruments、/stocks→/instruments?type=stock、/crypto/:code→/instruments/:code 全部保留 301（routes.tsx:120-124 等）；News 详情抽屉改为抽屉交互但路由保留作深链（News/index.tsx:226-228）。
+- 唯一缺口：登录后 returnTo 不存在（见 E-2）。
+
+**B-2 ⌘K 命令面板 + 全局搜索，焦点管理达标**（正面发现）
+- CommandPalette.tsx:95-113 ⌘K/Ctrl+K，注释明确 WCAG 2.4.3——关闭时焦点回归触发按钮；globalSearch API 接入。40 个菜单项 / 10 分组的规模下，这是关键效率杠杆。
+
+**B-3 移动端：Shell 到位，数据密集页偏薄**（P2）
+- Shell：<768px 侧栏转抽屉 + 汉堡钮（AppLayout.tsx 头注释，AppLayout.css 11 处 @media）；useIsMobile 在 47 个文件做 JS 分支。
+- 抽查 10 个重点页的页面级适配（useIsMobile 分支数 / 页面 CSS @media 断点数）：Dashboard 0/5、News 1/3、Digest 0/2、PoolList 0/2、PoolDetail 0/1、BacktestList 1/1、SignalDashboard 1/2、InstrumentList 1/0、InstrumentDetail 0/2、Login 0/0、Register 0/0。
+- 判断（已核实断点计数，页面实际渲染效果为推测）：Dashboard 5 断点较扎实；PoolDetail/BacktestList 单断点对多列表格页偏薄；Login/Register 无页面级断点且 global.css 也是 0 断点——登录卡片在窄屏的表现未经专门适配（推测，需真机复核）。
+
+**B-4 非管理员点开 admin 链接被静默弹回 /dashboard**（P3）
+- App.tsx AdminRouteGuard：`user?.role !== 'admin' → <Navigate to="/dashboard" replace/>`，无任何「无权限」提示；用户视角是「点了没反应」。
+- 修复：重定向前 message.info('该页面需要管理员权限')，或渲染无权限 EmptyState。
+
+### 旅程 C：建池 → 回测 → 看信号（核心投研工作流）
+
+**C-1 建池/加成员反馈链完整**（正面发现）
+- PoolDetail/index.tsx:61-98：改名 message.warning('请输入标的池名称')→success('标的池信息已更新')；加成员有重复校验 warning('该标的已在池中')；PoolList/index.tsx:131,140 删除有 Modal.confirm + 按 variables 精确到行的按钮 loading。
+
+**C-2 回测：同步引擎 + 30s axios 超时 = 长回测假报失败**（P1，跨前后端）
+- 场景：用户对大池/长区间跑回测。
+- 现状：后端在 HTTP 请求内同步执行回测引擎（20261025 后端摸底 P2-3，已核实引用）；前端 api/backtest.ts 的 create 未覆盖超时，走全局 `timeout: 30000`（api/client.ts:5）；BacktestList/index.tsx:103-107 失败即 message.error('回测失败') 并关 Modal。
+- 期望：>30s 的回测要么后台任务化+进度轮询，要么前端对 /backtests 单独放宽超时+进度条；至少失败文案区分「超时（回测可能仍在后台完成，请稍后刷新列表）」。
+- 附带：BacktestList:133 「该策略类型还没有已保存的配置，请先在策略库创建配置后再回测」是好的指路文案。
+
+**C-3 信号生成即时反馈**（正面发现）
+- SignalDashboard/index.tsx:243-250 按标的生成事件驱动信号，success 带标的名；:438-452 空事件关联时 warning 指路；空态「暂无信号/当前没有符合条件的交易信号」。
+- 缺口：SignalDashboard 无 isError 分支（grep 无命中）——信号接口挂时呈现空态，叠加 E-1。
+
+**C-4 模拟下单反馈带原因**（正面发现）
+- PaperTrading/index.tsx:165-169：`买入/卖出 订单已成交` + `err?.response?.data?.detail || '下单失败'`（detail-aware）。
+
+
+### 旅程 D：资讯浏览 → 收藏 → 学习中心
+
+**D-1 资讯页三态齐全、筛选可分享**（正面发现）
+- News/index.tsx:38-41 EmptyState+ErrorState+NewsDetailDrawer 三件套齐备（是 11 个有 isError 的页面之一）；:228 筛选进 URL；:166 情绪空态有说明文案。
+
+**D-2 学习中心错误态是「温柔的谎言」**（P3，有意为之但需回收）
+- KnowledgeFeed.tsx:180-186：`isError → EmptyState「知识库内容准备中」`——注释说明是 API 灰度期的刻意选择（404 或后端挂都显示这句）。但无重试出口，后端真挂超过一天用户仍被告知「稍后回来」。
+- 期望：isError 且 status≥500 时切 ErrorState+重试；404 才保持「准备中」。空数据态文案好（「换个主题看看……按近 90 天滚动更新」设定预期）。
+
+**D-3 学习-收藏闭环存在**（正面发现）
+- Learning/ 目录含 KnowledgeFeed/MyBookmarks/index + useArticleState.ts；News 卡片有 showBookmark、Drawer onRead（MEMORY 20260802 记录，本次走查 Learning 文件结构与 isError 分支已核实）。
+
+### 旅程 E：异常世界（断网 / 5xx / 超时 / 会话过期 / SSE 断线）——本次审计最大短板集中地
+
+**E-1 42/53 页面无错误分支：接口故障被伪装成「没有数据」**（P0）
+- 场景：后端 5xx / 断网 / 超时（axios 30s）时，用户打开任意未防御页面。
+- 现状（已核实计数）：53 个页面中 `isError` 仅 11 个（SentimentDashboard/Learning×2/GlobalMarkets/Dashboard/News×2/Portfolio/ResearchReports/Sentiment/CryptoList）；ErrorState 组件仅 5 个文件引用；`isLoading` 却覆盖 44 页。react-query 默认 `retry:1`（main.tsx:38-44，注释明确是为避免后端挂时每页卡 1.5min 的调优）——重试一次失败后，无错误分支的页面直接落入「暂无数据」表格/EmptyState。
+- 波及页面举例（grep isError 无命中，已核实）：PoolList、PoolDetail、BacktestList、BacktestDetail、SignalDashboard、InstrumentList、InstrumentDetail、Favorites、Macro、FundFlow、ETLStatus……
+- 用户后果：把「系统坏了」误读成「平台没有数据/功能是空壳」——对投研工具是致命的信任损失；平台自己的 ErrorState.tsx:22-25 注释都写了这条原则（「错误不能伪装成空态」），但推广停在 5 个文件。
+- 期望：列表/详情页统一模板 `isError ? <ErrorState onRetry={refetch} retrying={isFetching}>`；加 ESLint 自定义规则或 codemod 扫 `useQuery` 无 isError 消费的文件。
+- 备注：Dashboard/index.tsx:213 有满分示范（「三路全挂或任一路挂都…」逐卡 ErrorState+refetch）。
+
+**E-2 会话过期：静默踢出 + 丢上下文**（P1）
+- 场景：用户填了半小时表单/看研报，token+refresh 双过期。
+- 现状（已核实）：api/client.ts 无 refresh_token 时直接清 storage→logout()→`window.location.href='/login'`（无 toast、无提示原因）；登录成功固定 `navigate('/dashboard')`（Login.tsx:56），不带回跳。用户视角：页面突然变成登录页，重新登录后落在首页，之前的位置与未提交内容全部丢失。
+- 期望：跳转前 message.warning('登录已过期，请重新登录')；登录页支持 `?next=`（client.ts 跳转时带上 `encodeURIComponent(location.pathname+search)`，Login 成功后优先回 next）。
+- 好的一面（已核实）：并发请求的 refresh 有队列去重（client.ts isRefreshing/refreshQueue）；/auth/login 与 /auth/refresh 的 401 不触发踢出循环（2026-10-24 修复注释）；App.tsx:20-44 会话引导只对真 401 登出，瞬时故障保留会话+手动重试。
+
+**E-3 全站无离线感知**（P3）
+- `navigator.onLine` / offline 事件监听全站 0 处（已核实 grep=0）。断网时用户在 30s 超时后才知道有问题。
+- 期望：AppLayout 挂一个全局 offline/online toast；配合 E-1 的 ErrorState 文案区分「网络不可用」。
+
+**E-4 27 处泛化「XX失败」toast 不带原因**（P3）
+- 已核实计数：`message.error('…失败'` 类 27 处 vs detail-aware（读 response.data.detail）26 处，约对半。例：PoolList:42「创建失败」（创建池失败可能因重名/权限/校验，用户无从知道）。
+- 期望：统一 `toastError(err, '创建失败')` 助手（后端 detail 已确认是中文，见 §3.7），泛化文案只做兜底。
+
+**E-5 全局错误边界直面英文堆栈**（P2）
+- App.tsx:120-135 GlobalErrorBoundary 渲染 `this.state.error?.message`——React 渲染错误时 message 多为英文异常串（如 "Cannot read properties of undefined…"），下方才是中文说明；动作只有「刷新页面」，没有「返回首页」。
+- 期望：主文案固定中文（「页面发生错误，可尝试刷新」），error.message 收进可展开的详情；动作加「回到首页」。
+
+**E-6 SSE 断线：重连机制扎实，但连接态几乎不可见**（P2，详见 F-2 合并处理）
+- useMarketStream.ts:90-200 已核实：构造失败/断线均走指数退避 scheduleReconnect，onopen 重置退避并清 error，信封解包+畸形事件容忍。连接态仅 Favorites/index.tsx:432（「实时行情已连接/连接中…」）可见；TickerTape.tsx 也实现了 isConnected/error 展示，但全仓无任何文件 import TickerTape（已核实 grep 0 引用，孤儿组件）。
+
+### 旅程 F：数据可信度体验（数据延迟/缺失时页面说明什么）
+
+**F-1 新鲜度角标设计好、采用率低**（P2）
+- DataFreshnessHint.tsx（相对时间+Tooltip 完整本地时间+是否仍在更新）仅 3 个文件采用；LastUpdated 组件 15 个文件。核心标的详情页 InstrumentDetail 无数据时间角标（已核实 grep 无命中）——用户无法判断看到的是实时价还是昨收。
+- 期望：所有「时间敏感数据」模块（行情、指标、评分、信号）强制带角标；考虑把角标接入 ETL 状态接口做「落后 N 天」红黄提示。
+
+**F-2 行情停更无感知：Dashboard/InstrumentList 消费 SSE 却不显示 isConnected**（P1，数据可信度）
+- 已核实：Dashboard/index.tsx:190,314 与 InstrumentList/index.tsx:346 都只用 `latest`，两文件 `isConnected` 计数=0。SSE 断线退避期间（可能数分钟），首页指数与标的列表价格冻结，页面没有任何「行情已停更于 HH:MM」提示——用户会把陈旧价格当实时价格做判断。Favorites 有连接态说明，恰说明组件能力在而推广缺。
+- 期望：LivePriceCell/首页指数卡在 `!isConnected && 最新tick>10s` 时降级显示灰点+最后更新时间；复用 DataFreshnessHint。
+
+**F-3 ETL/资讯健康度对普通用户开放**（正面发现）
+- routes.tsx:202 `/etl-status`（ETL 状态）、:204 `/news/health`（资讯健康度）在 ops 组、非 admin；admin 另有 `/admin/etl-status` 运维看板（:203）。数据管道透明度好。缺口同 F-1：页面内有健康度，但**业务页面本身**不消费它。
+
+
+---
+
+## 三、专项复核
+
+### 3.1 与 20260825 UI 一致性口诀的违例复查
+- 字号地板 12px：全仓 `font-size:8|9|10|11px`（css+tsx）复核计数 22 处；20261025 FE 摸底为 33 处（口径略宽，含其清单化统计）。趋势收敛、无系统性新增，维持既有 P1 定级不重复立项。
+- clickableRow 显式标记 / 整行单动作：20261025 FE 摸底 P1-5（3 处绕过、其一键盘不可达）与「整行单动作 0 违例」结论本次未推翻；clickableRow 相关文件 14 个，未发现新增绕过模式（抽查级，非全量走查）。
+- chip 只 accent/static 两种：未发现新违例样式类（抽查级）。
+
+### 3.2 颜色 token
+- tsx 内 hex 字面量 66 处 / 集中在 10 个文件（与 FE 摸底 P1-8「图表字面量色未走 resolveChartColor」一致，不重复立项）；tsx 中 `var(--…)` 179 处，token 化主体健康；CSS 内 hex 138 处多为 token 定义本身与一次性样式。
+
+### 3.3 中英文混杂
+- 全仓 JSX 英文 UI 文案抽查仅命中专有名词（InstrumentList:899 "QDII"、TradingPanel:618 "Binance API Key"、NotificationConfig:304 "AlloyResearch"、PerformanceIndicator:162 "Web Vitals"）——**无系统性中英混杂**。后端错误 detail 抽查：英文 detail 0 处 / 中文 12 处，前后端语言一致。
+
+### 3.4 日期/数字/百分比格式统一性（P2）
+- 统一入口存在：utils/datetime.ts（DISPLAY_TZ='Asia/Shanghai'、formatDateTime/formatRelative 等）与 utils/format.ts（9 个导出）。
+- 实际采用率：页面/组件裸 `toFixed(` 200 处，formatPercent/formatNumber 助手仅 5 个文件采用；裸 `toLocale*` 53 处 vs dayjs 直用 7 页。后果：小数位（2 位 vs 4 位）、千分位、百分比符号在不同页面漂移。
+- 期望：列定义统一走 format.ts；ESLint no-restricted-syntax 限制裸 toFixed/toLocale*。
+
+### 3.5 可访问性
+- axe 覆盖缺口：tests/a11y 仅 3 个文件 445 行，渲染对象是 CommandCenterFixture / DetailDrawer / AppLayout（fixture），0 真实页面（smoke.test.tsx:143 渲染 AppLayout）——与 FE 摸底 P1-6 一致；**新增角度**：fixture 无法覆盖的键盘穿越（表格行、抽屉栈）、aria-live（SSE 价格更新对读屏的噪音）、焦点陷阱等完全没有回归防线。
+- 对比度抽查（按 token 计算）：dark 主题 text-secondary/tertiary 已按 AA 修复且有注释（theme.css:401-405）；**light 主题 --text-muted #6B7280 在 --bg-elevated #F3F5F7 上 ≈4.4:1，低于 AA 4.5:1**（theme.css:30,31,54,329）——muted 说明文字大量出现在卡片/表头场景，建议改 #5B6472 或加深 bg 差。
+- aria 铺量：aria-* 228 处（中文 aria-label 56 处）、tabIndex 52、键盘处理 67、role= 63——基础在，但分布不均（集中在共享组件，页面级表格/图表 aria 稀疏，抽查级判断）。
+- prefers-reduced-motion：49 处引用，覆盖面好（正面）。
+
+### 3.6 性能体验（白屏/首屏/交互延迟）
+- bundle 引用 20261025 FE 摸底同日实测（build 11.2s、dist 5.0MB、入口 index gzip 48KB、首屏 CSS gzip 45KB、antd+echarts 两 chunk 超 500KB raw 但均懒加载边界外）。本次在 working tree 复跑 `npm run build` 因并发 WIP 的 2 个 tsc 错误中断（见文首警告），未获得新 bundle 数；**HEAD 可编译性以 git show 核实 + FE 摸底同日结论佐证**。
+- 反模式体感评估（引用 FE 摸底清单，补用户视角结论）：
+  - Favorites SSE 下每 ~3s 整表重渲染（P1-1）：用户体感=滚动中表格可能轻微软顿、行内 hover 抖动；中低端设备+50 行时更明显。与 sparkline 请求风暴（P1-3）叠加时是本站最可感知的卡顿源。
+  - 26+ 页 columns 无 useMemo（P1-2）：本身用户几乎无感（React diff 兜底），是电池/CPU 税而非交互延迟；优先级应让位于本报告 E-1/E-2。
+  - 行内 sparkline 每行一请求（P1-3）：体感=列表滚动时网络面板风暴、移动端流量与电量；首屏 50 并发可能挤占主文档请求。
+- 白屏路径：入口 HTML→CSS(45KB gzip)→vendor(88KB)→ui(372KB)→入口(48KB) 均懒加载友好；路由切换期是纯文本「加载中...」（routes.tsx:89）——首屏白屏风险低，**次级页面切换的廉价感**是主要问题（并入 E-1 同修）。
+
+### 3.7 后端错误响应对照（体验视角）
+- FastAPI 默认 detail 结构 `{detail}`，前端 26 处已按 `response.data.detail` 消费；后端 detail 文案中文（§3.3），链路自洽。
+- main.py 无全局 Exception handler（grep 无 @app.exception_handler）：未捕获异常返回 FastAPI 默认英文 "Internal Server Error"（detail 为字符串）——恰好落进前端泛化兜底文案，可接受；但建议加 handler 统一 `{detail:"服务器内部错误，请稍后重试"}` 并脱敏堆栈。
+- /health（main.py:134）含 db/redis 组件 detail，供监控；前端未消费（除 PerformanceIndicator 的 Web Vitals，utils/webVitals.ts 205 行）。
+
+---
+
+## 四、最伤用户 Top 10（按伤害排序）
+
+| # | 问题 | 严重度 | 一句话修复 |
+|---|---|---|---|
+| 1 | 42/53 页无错误分支，故障伪装成「暂无数据」（E-1） | P0 | codemod 推广 `isError→ErrorState+refetch` 模板，先覆盖 Pool/Backtest/Signal/Instrument/Favorites |
+| 2 | 行情停更无感知：Dashboard/InstrumentList 不显示 SSE 连接态（F-2） | P1 | LivePriceCell/指数卡接 isConnected，停更>10s 显示「停更于 HH:MM」 |
+| 3 | 回测>30s 假报「回测失败」（C-2） | P1 | /backtests 单独放宽超时或改后台任务+轮询；失败文案区分超时 |
+| 4 | 会话过期静默踢登、重登丢位置（E-2） | P1 | 踢出前 warning toast + /login?next= 回跳 |
+| 5 | 路由切换纯文本「加载中...」+全站骨架屏仅 5 文件（§3.6） | P1 | 路由 fallback 换 Spin+页面骨架；列表页 Table loading 配 Skeleton 行 |
+| 6 | 全局错误边界直面英文堆栈、只有刷新（E-5） | P2 | 中文主文案+折叠详情+「回首页」 |
+| 7 | 数据新鲜度角标覆盖 3/53 文件，详情页无数据时间（F-1） | P2 | 时间敏感模块强制 DataFreshnessHint |
+| 8 | 数字/日期格式碎片化：200 处裸 toFixed（§3.4） | P2 | 统一 format.ts + lint 禁裸调用 |
+| 9 | light 主题 muted 文本对比度 4.4:1 踩线（§3.5） | P2 | --text-muted 加深至 ≥4.5:1 |
+| 10 | 27 处「XX失败」无原因 toast + 死寂空态孤例（E-4/A-3） | P3 | toastError(err, fallback) 助手；空态补引导 |
+
+
+---
+
+## 五、与既有报告的边界（已知不重复）
+
+| 既有报告 | 其已覆盖、本报告不重复的内容 | 本报告与其的关系 |
+|---|---|---|
+| 20261025 前端健康摸底 | 16 处类型契约漂移（P0-1/2/3 已由 09273ff 修复，本次在 Digest/index.tsx:28-35 与 PoolDetail:106 抽验对齐）、AIHelp Provider（P0-4，09273ff 消除双 Context）、columns 无 memo / Favorites 3s 重渲染 / sparkline 风暴（P1-1/2/3，本报告仅补体感评估）、字号 33 处、clickableRow 3 处、a11y 0 真实页、图表字面量色、bundle 表 | 引用 + 体感转译；数字口径差异已注明 |
+| 20261025 后端健康摸底 | 评分/信号竞态、stuck-ETL 误删、信号生成串行、auto_trade N+1、cninfo 队列饿死、限流缺失、**回测同步执行（P2-3）** | P2-3 被本报告 C-2 升格为用户可感知 P1（叠加前端 30s 超时） |
+| 20260825 UI 一致性大修 | 83 条假可点击/密度收敛与四条口诀 | 复查见 §3.1，无新增系统性违例 |
+| 20260701 平台逻辑审计 | 数据源/评分/策略正确性、crypto stub 与 live-trading 无入口（当时） | 不涉及；其「专业平台对比」章节的部分建议已被 OnboardingTour/⌘K/IA 合并落地 |
+
+## 六、做得好的（避免误伤）
+1. 登录错误四分类 + 邮箱未验证指路（Login.tsx:58-77）；注册防枚举 + OTP 自动登录（Register.tsx:116、RegisterVerify.tsx:188）。
+2. ErrorState 的「错误不能伪装成空态」原则与 Dashboard 满分示范（ErrorState.tsx:22-25、Dashboard:213）。
+3. SSE 指数退避/队列刷新/token 轮换持久化（useMarketStream.ts、api/client.ts）。
+4. react-query retry:1 调优有决策注释（main.tsx:38-44）。
+5. ⌘K + 全局搜索 + WCAG 焦点回归（CommandPalette.tsx:95-113）；OnboardingTour 5 步首访引导。
+6. 深链完整：14 页 URL 筛选 + 三组旧路径 301 + News 抽屉深链保留。
+7. ETL 状态/资讯健康度对普通用户开放（routes.tsx:202,204）。
+8. mutation 反馈纪律：toast+行级 loading（PoolList:131,140）+ Popconfirm + 重复校验 warning（PoolDetail:61-98）。
+9. dark 主题对比度按 AA 修复且注释了新旧比值（theme.css:401-405）；prefers-reduced-motion 49 处。
+10. 移动 Shell（<768px 抽屉）+ 47 文件 useIsMobile；Web Vitals 前端可观测（PerformanceIndicator + utils/webVitals.ts）。
+
+## 七、方法与证据基线
+- 环境：仓库根 `/Users/aidanliu/Documents/Coding-Project/Investment-Research-Platform`，HEAD `6047e04`；只读审计，唯一写入为 docs/dev-notes/20261025-usability-ux-audit.{md,html}。
+- 主要证据形态：grep -rn 计数与 file:line（文中「已核实」）；页面渲染效果、真机移动端、对比度实测（vs 计算值）、axe 全页跑均为**未验证项**，相关结论已标「推测」。
+- 构建复验：working tree 因并发 reset-password WIP `tsc` 红（TS6133/TS2369），git show 核实均非 HEAD；HEAD 编译状态沿用同日 FE 摸底「tsc 0 错误」结论。
+- 未跑：全量 pytest（按任务约束）、vitest a11y（fixture 覆盖已由静态走查确认，运行不改变结论）。
+- 审计执行中的临时动作：曾于 127.0.0.1:8973 起静态服务尝试喂给网页阅读器（失败），已 pkill 清理；无其他副作用。
+
+> 落库建议（主会话策展）：「错误不能伪装成空态」+「连接态/新鲜度必须随数据走」两条口诀候选进 vault；Top10 #1/#2 适合下一个 UX sprint 的 codemod 批次。

@@ -1,0 +1,53 @@
+<!DOCTYPE html><html lang="zh-CN"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"><title>挑剔用户实测评审 2026-10-25</title><style>
+body{font-family:-apple-system,"PingFang SC",sans-serif;max-width:880px;margin:2rem auto;padding:0 1rem;line-height:1.75;color:#1f2328}
+h1{border-bottom:2px solid #d0d7de;padding-bottom:.4rem;font-size:1.5rem} h2{margin-top:2rem;font-size:1.2rem;border-left:4px solid #0969da;padding-left:.5rem}
+table{border-collapse:collapse;width:100%;margin:1rem 0;font-size:.92rem} th,td{border:1px solid #d0d7de;padding:.45rem .6rem;text-align:left;vertical-align:top} th{background:#f6f8fa}
+code{background:#f6f8fa;padding:.1rem .35rem;border-radius:4px;font-size:.88em} pre{background:#f6f8fa;padding:1rem;border-radius:8px;overflow-x:auto;font-size:.85rem}
+blockquote{border-left:4px solid #d0d7de;margin:1rem 0;padding:.2rem 1rem;color:#57606a;background:#f6f8fa}</style></head><body>
+<h1>挑剔用户实测生产站评审（2026-10-25）</h1>
+<blockquote>视角：第一次接触 AlloyResearch 的独立评测人，对标 Linear/Stripe 级产品标准。</blockquote>
+<blockquote>对象：https://www.alloyresearch.net 生产站，全部只读探测（curl 计时/头部/一次性失败登录）。</blockquote>
+<blockquote>说明：原派子 agent 因工具残缺中止，本评审由主会话亲自执行全部探测。</blockquote>
+<blockquote>关联：[可用性/UX 全面审计](20261025-usability-ux-audit.md)（代码侧 6.9/10）、[Aurora Horizon 视觉重塑](../web/src/styles/global/aurora.css)</blockquote>
+<h2>总分：2.9/5（实施本报告修补后预估 3.8/5，安全头上线后 4.3/5）</h2>
+<p>一句话结论：**跳转与静态资源工程纪律是 A 级，品牌呈现与安全头是不及格项**——像一个引擎精心调校但没装车标的跑车。</p>
+<h2>实测明细</h2>
+<table>
+<tr><th>#</th><th>维度</th><th>评分</th><th>实测证据</th><th>对标差距</th></tr>
+<tr><td>1</td><td>跳转链</td><td>5/5</td><td>`http://`→`https://www`、裸域→www 全部 301 单跳直达 200</td><td>Linear/Stripe 同级</td></tr>
+<tr><td>2</td><td>首页元信息</td><td>1/5 → **已修**</td><td>零 description/OG/theme-color；`/favicon.ico` 是 **0 字节空文件**；`/favicon.svg`、`/apple-touch-icon.png`、`/manifest.json` 返回 1065B 的 SPA 兜底 HTML（假 200）</td><td>Stripe 有完整 OG 卡片；本项目分享到任何 IM 都是无图标无摘要的白卡</td></tr>
+<tr><td>3</td><td>静态资源</td><td>4/5</td><td>`cache-control: public, max-age=31536000, immutable` + ETag + gzip ✅</td><td>缺 brotli（nginx 模块层面）</td></tr>
+<tr><td>4</td><td>TTFB</td><td>3/5</td><td>5 连测 0.67–0.71s，抖动极小</td><td>海外/本机视角可接受；Stripe ≈0.1–0.3s。大陆用户视角未测（ECS 出口线路决定）</td></tr>
+<tr><td>5</td><td>安全响应头</td><td>1/5</td><td>无 HSTS、无 X-Frame-Options、无 X-Content-Type-Options、无 Referrer-Policy、无 CSP</td><td>Stripe/Linear 四件套齐备</td></tr>
+<tr><td>6</td><td>登录错误文案</td><td>3/5</td><td>401 `{&quot;detail&quot;:&quot;Invalid credentials&quot;}`——语义正确但英文生硬；未认证 API 403 正确</td><td>中文产品的第一句人机对话应说中文、且不指责用户</td></tr>
+<tr><td>7</td><td>SPA 404</td><td>3/5</td><td>`/no-such-page` → 200 + SPA 壳（由前端 404 路由接管，可接受）</td><td>需确认前端 404 页存在且有回首页出口</td></tr>
+<tr><td>8</td><td>新用户视角</td><td>2/5</td><td>注册关闭（已知项：待 SMTP 后开放）；忘记密码入口本轮已从「联系管理员」改为邮箱自助重置</td><td>挑剔用户会问：这产品给谁用？为什么值得注册？登录页需要一句价值主张</td></tr>
+</table>
+<h2>最伤体验 Top5（按伤害排序）</h2>
+<p>1. **安全头全缺**——点击劫持/嗅探防御为零（nginx 四件套草案见附录，待批准部署）</p>
+<p>2. **品牌呈现缺失**（✅ 已实施：favicon 三件 + meta/OG 全套）</p>
+<p>3. **登录错误英文生硬**——待办，需与认证域联动的 detail 中文化</p>
+<p>4. **og:image 缺失**——待办：需要一张 1200×630 品牌卡（Aurora Horizon 母题正好可用）</p>
+<p>5. **无 brotli**——nginx 层待办，文本资源再省 ~15-20%</p>
+<h2>已实施（本评审直接落地）</h2>
+<table>
+<tr><th>文件</th><th>改动</th></tr>
+<tr><td>`web/public/favicon.svg`</td><td>新增：Aurora Horizon 品牌图标（深空底+熔金日弧+极光青地平线，与 Dashboard 晨昏线同母题）</td></tr>
+<tr><td>`web/public/favicon.ico`</td><td>替换 0 字节空文件为 16/32/48 多尺寸</td></tr>
+<tr><td>`web/public/apple-touch-icon.png`</td><td>新增 180px</td></tr>
+<tr><td>`web/index.html`</td><td>description/theme-color/icon 声明/og:title/description/type/url/site_name</td></tr>
+</table>
+<h2>附录：nginx 安全头草案（待用户批准后进 deploy/aliyun-ecs/nginx.conf）</h2>
+<pre>
+# 在 server 块（443）追加；always 保证非 2xx 也带
+add_header Strict-Transport-Security &quot;max-age=31536000; includeSubDomains&quot; always;
+add_header X-Content-Type-Options &quot;nosniff&quot; always;
+add_header X-Frame-Options &quot;DENY&quot; always;
+add_header Referrer-Policy &quot;strict-origin-when-cross-origin&quot; always;
+# CSP 需先盘点 inline script/style 与 API 域，二期再上，避免一刀切搞挂 SPA
+# brotli（若模块可用）：brotli on; brotli_types text/css application/javascript application/json image/svg+xml;
+</pre>
+<h2>方法备注</h2>
+<li>TTFB 用 `curl -w time_starttransfer` 连测 5 次；失败登录仅 1 次（不存在用户名），未触限流</li>
+<li>`/favicon.svg` 等「假 200」判据：响应体 1065B 与 SPA index.html 一致而非对应 MIME</li>
+<li>未验证项：大陆视角 TTFB、真实浏览器渲染表现（本机无截屏能力）</li></body></html>
