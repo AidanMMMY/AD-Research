@@ -15,6 +15,12 @@ import sys
 self_name = sys.argv[1].lower() if len(sys.argv) > 1 else "deploy"
 try:
     d = json.load(sys.stdin)
+    # 2026-10-25 pipeline audit P2：API 错误响应（401/404/限流）没有
+    # total_count 字段，此前被当成"无 check run"放行——门禁洞开。合法的
+    # 空响应（docs-only push）一定带 total_count（可为 0）。
+    if "total_count" not in d:
+        print("retry")
+        sys.exit(0)
     runs = [
         r
         for r in d.get("check_runs", [])

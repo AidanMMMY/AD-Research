@@ -197,8 +197,10 @@ log_step "2.5/4 清理残留容器"
     set +e
     docker compose rm -f -s backend celery-worker-indicator celery-worker-cninfo nginx >/dev/null 2>&1
     # orphan 容器手动 docker rm，避免影响下次 --force-recreate。
-    # 限定 project 名（alloyresearch）确保不影响其他项目容器。
-    docker ps -a --filter "label=com.docker.compose.project=alloyresearch" \
+    # 限定 compose project 名确保不影响其他项目容器。注意：项目名来自
+    # compose 文件所在目录名 = aliyun-ecs（容器名前缀 alloyresearch- 是
+    # container_name，不是 project label；2026-10-25 pipeline audit 实证）。
+    docker ps -a --filter "label=com.docker.compose.project=aliyun-ecs" \
         --format '{{.ID}} {{.Names}}' | awk '$2 !~ /^(alloyresearch-backend|alloyresearch-celery-worker-indicator|alloyresearch-celery-worker-cninfo|alloyresearch-nginx|alloyresearch-postgres|alloyresearch-redis)$/ {print $1}' \
         | xargs -r docker rm -f >/dev/null 2>&1
     true

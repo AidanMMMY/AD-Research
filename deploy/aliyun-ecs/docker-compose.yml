@@ -38,6 +38,11 @@ x-backend-env: &backend-env
   # DB 的 extracted_text 仍是主存储。
   CNINFO_MD_DIR: ${CNINFO_MD_DIR:-/data/alloy-research/cninfo_md}
   INDICATOR_BACKEND: ${INDICATOR_BACKEND:-sql}
+  # 邮箱自助注册/密码重置（2026-10-25）：不透传则生产 .env 配了容器也看不到
+  AUTH_REGISTRATION_ENABLED: ${AUTH_REGISTRATION_ENABLED:-false}
+  AUTH_PASSWORD_RESET_ENABLED: ${AUTH_PASSWORD_RESET_ENABLED:-false}
+  # 魔法链接与 verify-link 302 的目标源；生产须配 https://www.alloyresearch.net
+  FRONTEND_BASE_URL: ${FRONTEND_BASE_URL:-}
 
 services:
   postgres:

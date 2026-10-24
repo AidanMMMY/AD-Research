@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>commit→push→CI→ci_gate→部署→落地验证 全链路审计（2026-10-25）</title>
+<style>
+:root{--fg:#1a1d21;--muted:#5b6470;--bg:#fafafa;--card:#fff;--line:#e2e5ea;--accent:#0f62fe;--ok:#12805c;--warn:#8a6116;--bad:#b01836;--code:#f3f4f6;}
+*{box-sizing:border-box}
+body{margin:0;font:15px/1.7 -apple-system,"PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif;color:var(--fg);background:var(--bg)}
+main{max-width:1080px;margin:0 auto;padding:32px 20px 80px}
+h1{font-size:26px;margin:0 0 6px}
+h2{font-size:20px;margin:40px 0 12px;padding-bottom:8px;border-bottom:2px solid var(--line)}
+h3{font-size:16px;margin:24px 0 8px}
+blockquote{margin:12px 0;padding:10px 16px;background:#eef4ff;border-left:4px solid var(--accent);border-radius:4px;color:#2c3a55;font-size:13.5px}
+table{border-collapse:collapse;width:100%;margin:12px 0;font-size:13.5px;background:var(--card)}
+th,td{border:1px solid var(--line);padding:7px 10px;text-align:left;vertical-align:top}
+th{background:#eef1f5;white-space:nowrap}
+code{background:var(--code);padding:1px 5px;border-radius:4px;font:12.5px/1.5 ui-monospace,SFMono-Regular,Menlo,monospace}
+pre{background:#101418;color:#d6e2f0;padding:16px;border-radius:8px;overflow-x:auto;font:12.5px/1.55 ui-monospace,SFMono-Regular,Menlo,monospace}
+ul,ol{padding-left:22px}
+li{margin:4px 0}
+.tag{display:inline-block;padding:0 8px;border-radius:10px;font-size:12px;font-weight:600;white-space:nowrap}
+.ok{color:var(--ok)}.warn{color:var(--warn)}.bad{color:var(--bad)}
+.p1{background:#fde8ec;color:var(--bad)}.p2{background:#fdf1dd;color:var(--warn)}.p3{background:#e8f0fd;color:#1d4ed8}
+a{color:var(--accent)}
+.small{font-size:12.5px;color:var(--muted)}
+</style>
+</head>
+<body><main>
+<h1>commit→push→CI→ci_gate→部署→落地验证 全链路审计（2026-10-25）</h1>
+<p class="small">审计 agent 一次性产物 · 基线 HEAD 6047e04 · 关联：<a href="20261025-gitleaks-deploy-block-and-e2e.html">gitleaks 阻断事故</a> / <a href="20260719-deploy-tripwires.html">deploy-tripwires</a>。审计开始时快照为「本地领先 origin/main 待 push」，审计过程中 origin/main 已同步到 6047e04（本审计未做任何 push）。</p>
+
+<h2>0. 全链路一图流（现状）</h2>
+<pre>本地（无 pre-commit 钩子，全靠成文习惯）
+  └─ git commit ──→ git push origin main
+       ├─ secrets-scan.yml  gitleaks 全历史扫描（PR + push main，无 paths 过滤）
+       ├─ backend-ci.yml    pytest(≈1064,15min) + ruff（paths: app/alembic/scripts/pyproject/poetry.lock/self）
+       ├─ web-ci.yml        lint+tsc+build + a11y（paths: web/**）
+       └─ deploy.yml        self-hosted runner，/opt/ad-research：
+            1  Sync       rotate-log 备份 previous_head(留10) → fetch --all --prune
+                         → porcelain 脏树即败 → reset --hard origin/main
+            2  ci_gate    check-runs 轮询 90×10s≈15min；无 check=放行/有失败=中止/否则等待
+            2.5 baseline /health 记录基线
+            2.7 runner_healthcheck.sh 自愈（best-effort, 2min）
+            3  update.sh flock 互斥 → docker build --no-cache(GIT_SHA 打标, tag
+                         ad-research:&lt;sha&gt;+latest) → &lt;30s build 警告 → 停旧容器+孤儿清理
+                         → up -d(force-recreate) → 容器内 /health body status=ok
+                         等待 300s(150×2s) → alembic current==head 只读校验 →
+                         旧镜像清理(只留 sha+latest, cache 72h+)   [外层 retry ×2, 15min/次]
+            3.5 smoke    容器内 import app + alembic current + /health body + openapi.json
+            4  迁移校验    check_migrations.sh（0=OK /10=需迁移 /20=异常）
+            5  health     30×2s 容器内探测
+            6  失败回滚    rollback.sh previous_head（镜像 tag 复用或重建 + 60s 健康）
+            7  成功摘要    previous..current git log
+       失败/成功 → webhook + /var/log/ad-research/deploy-failures.log
+落地验证（人工）：/opt HEAD vs 容器 GIT_SHA vs /health vs alembic；
+  verify_post_deploy.sh（internal 路由 + INTERNAL_API_TOKEN 双向 + llm probe）</pre>
+
+<h2>1. 环节表</h2>
+
+<h3>1.1 本地提交前</h3>
+<table>
+<tr><th>规则/参数</th><th>现状</th><th>证据</th><th>评估</th></tr>
+<tr><td>black line-length 100</td><td>成文</td><td>pyproject.toml:57-58</td><td class="ok">✅</td></tr>
+<tr><td>ruff 0.8.x 规则集 + per-file-ignores</td><td>成文</td><td>pyproject.toml:61-90</td><td class="ok">✅（CI ruff==0.8.6 对齐，backend-ci.yml:180）</td></tr>
+<tr><td>提 PR 前本地 pytest + tsc + vite build</td><td>成文（AGENTS.md §6）</td><td>AGENTS.md</td><td class="warn">⚠️ 仅约束 PR；本仓库常态直推 main</td></tr>
+<tr><td>gitleaks 预扫 detect --log-opts</td><td>成文口诀</td><td>20260719-deploy-tripwires.md:231-233</td><td class="warn">⚠️ 习惯非强制；漏跑代价=push 后 11s 中止+回滚（10-25 实测）</td></tr>
+<tr><td>staged diff 独立审查</td><td>纯习惯，未成文</td><td>—</td><td class="warn">⚠️</td></tr>
+<tr><td>pre-commit 钩子（任何形式）</td><td><b>不存在</b></td><td>无 .pre-commit-config.yaml / .husky（实测）</td><td class="bad">❌ 第一道防线后置到 push 后</td></tr>
+</table>
+<p><b>建议</b>：① pre-commit 框架 + gitleaks hook（--staged 秒级，性价比最高）；② 至少先把「提交前 gitleaks 复扫 + staged diff 自查」写进 AGENTS.md §6；③ black/ruff 留给 CI 即可。</p>
+
+<h3>1.2 push 触发（逐 workflow）</h3>
+<table>
+<tr><th>workflow</th><th>on</th><th>paths</th><th>评估</th></tr>
+<tr><td>secrets-scan</td><td>PR(全) + push main</td><td>无过滤</td><td class="ok">✅ 合理（secret 可经任意路径进来）；缺 timeout-minutes，P3</td></tr>
+<tr><td>backend-ci</td><td>PR + push main</td><td>app/alembic/scripts/pyproject/poetry.lock/self</td><td class="bad">❌ 漏 agent/**、research/**（ruff lint 它们但不触发）、Dockerfile、deploy/**——零门禁直上生产</td></tr>
+<tr><td>web-ci</td><td>PR + push main</td><td>web/**</td><td class="ok">✅</td></tr>
+<tr><td>deploy</td><td>push main + workflow_dispatch(ref/skip_migrations/dry_run)</td><td>无过滤</td><td class="warn">⚠️ docs-only 也全量重建；但不建议简单加 paths-ignore（事件丢失更难发现），宜做 docs-only 只 Sync 分支</td></tr>
+<tr><td>事件丢失防御（c0c5e8d 零触发）</td><td>无任何检测/防御</td><td>10-25 实录：无 paths 过滤的 deploy/secrets-scan 本应必触发却零 run</td><td class="bad">❌ P2；建议 push 后核对 check-runs 或 30min watchdog workflow 对账 origin/main vs 最新 deploy run head_sha</td></tr>
+</table>
+
+<h3>1.3 CI 门禁（ci_gate）</h3>
+<table>
+<tr><th>参数</th><th>值/语义</th><th>评估</th></tr>
+<tr><td>轮询</td><td>90×10s≈15min 超时中止（ci_gate.sh:23-36）</td><td class="ok">✅ 语义正确：无非 deploy check=放行 / 任一失败类=中止 / 否则等待</td></tr>
+<tr><td>端点</td><td>/commits/{sha}/check-runs（非 /statuses）</td><td class="ok">✅ 正确（Actions 产生 check run）</td></tr>
+<tr><td>SELF_NAME 过滤</td><td>名字含 "deploy" 即排除（ci_gate_parse.py:20-22）</td><td class="warn">⚠️ 子串匹配，未来 job 名含 deploy 的 check 失败会被豁免。P3</td></tr>
+<tr><td>API 错误处理</td><td>curl 无 -f；错误 JSON 无 check_runs 键 → runs=[] → <b>"success" 放行</b>（ci_gate_parse.py:18-29）</td><td class="bad">❌ P2：token 失效/repo 改名/404 时门禁静默打开；应校验 total_count 或 HTTP 码</td></tr>
+<tr><td>零 check 立即放行</td><td>事件未注册 check run 时秒判 success</td><td class="warn">⚠️ P3：与事件丢失叠加=未验证先部署；可要求最小等待窗</td></tr>
+<tr><td>timeout 层级</td><td>job 45min；update ×2 各 15min；gate 自身≈15.5min</td><td class="bad">❌ P2：最坏 ≈48min &gt; 45min，job 被 timeout 取消时 if:failure() 的 Rollback 不执行</td></tr>
+</table>
+
+<h3>1.4 部署链参数</h3>
+<table>
+<tr><th>环节</th><th>参数/证据</th><th>评估</th></tr>
+<tr><td>concurrency</td><td>group=aliyun-deploy, cancel-in-progress=false（deploy.yml:32-34）</td><td class="ok">✅ 严格串行</td></tr>
+<tr><td>Sync 三步</td><td>备份 previous_head(留10)→fetch --all --prune→TARGET_REF 校验→脏树 loud bail→reset --hard（deploy.yml:48-89）</td><td class="ok">✅ 完备</td></tr>
+<tr><td>镜像打标</td><td>GIT_SHA build-arg→ad-research:${SHA}+latest（update.sh:131-168）</td><td class="ok">✅</td></tr>
+<tr><td>&lt;30s build 警告</td><td>update.sh:169-176</td><td class="ok">✅ 配合 --no-cache 自洽</td></tr>
+<tr><td>互斥锁</td><td>flock 非阻塞（update.sh:75-96）</td><td class="ok">✅</td></tr>
+<tr><td>健康窗</td><td>300s 容器内 body status=ok（update.sh:221-256；compose start_period 240s）</td><td class="ok">✅ 覆盖大列 ALTER 实测 ~5min</td></tr>
+<tr><td>迁移校验</td><td>entrypoint 唯一升级点 + 双层只读 current==head（update.sh:261-279 / check_migrations.sh 退出码 0/10/20）</td><td class="ok">✅ 分层冗余合理</td></tr>
+<tr><td>孤儿容器清理</td><td>label=com.docker.compose.project=<b>alloyresearch</b>（update.sh:201）</td><td class="bad">❌ P1：compose 项目名默认 aliyun-ecs（runner_healthcheck.sh:47 同判）→ 过滤疑匹配 0 容器，tripwire#4 防御静默 no-op；需 ECS 实证标签后修</td></tr>
+<tr><td>旧镜像清理</td><td>只留 SHA+latest；cache 72h+（update.sh:281-293）</td><td class="ok">✅ ⚠️ 副作用：previous 镜像必被删→自动回滚走重建慢路径（P3 记录）</td></tr>
+<tr><td>rollback</td><td>tag 复用或重建 + backend/indicator/cninfo/nginx + 60s 健康（rollback.sh:157-209）</td><td class="ok">✅</td></tr>
+<tr><td>retry</td><td>update attempt 2/2 间隔 30s（registry HTTP/2 抖动）</td><td class="ok">✅（见 1.3 超时预算）</td></tr>
+<tr><td>落地验证</td><td>smoke + verify_post_deploy.sh + tripwires 尾部清单</td><td class="ok">✅ 分层充分；verify_post_deploy 未挂 CI（P3 可选）</td></tr>
+</table>
+
+<h3>1.5 环境参数完备性</h3>
+<table>
+<tr><th>项</th><th>现状/证据</th><th>评估</th></tr>
+<tr><td>AUTH_REGISTRATION_ENABLED / FRONTEND_BASE_URL</td><td>根 example 有（106-112；config.py:271,330）；deploy example 无；<b>compose anchor 不透传</b>（docker-compose.yml:4-40）</td><td class="bad">❌ P1 三处缺二：即使生产 .env 配了容器也看不到；魔法链接会指向 localhost:5173</td></tr>
+<tr><td>LLM 切换链（CHAIN/GLM/KIMI/COOLDOWN）</td><td>根 example 齐全；deploy example 只有 minimax/deepseek 旧文案；compose anchor 无</td><td class="bad">❌ P2：切换链没接进生产——"GLM/KIMI key 至今未配"的落点缺失</td></tr>
+<tr><td>BLS_API_KEY</td><td>compose 透传(:27)、生产在用；两个 example 均无</td><td class="bad">❌ 登记漏</td></tr>
+<tr><td>CORS / ENABLE_SCHEDULER / GITHUB_TOKEN / GITHUB_REPO / JINA_API_KEY</td><td>deploy example 全缺（生产 .env 实配部分）</td><td class="bad">❌ 违反「env key 双登记」口诀</td></tr>
+<tr><td>INTERNAL_API_TOKEN</td><td>两 example + compose 三处齐全</td><td class="ok">✅ 事故教训已闭环</td></tr>
+<tr><td>镜像内容物</td><td>只 COPY app/ + alembic/ + alembic.ini + 2 个 scripts 文件（Dockerfile:85-93）</td><td class="bad">❌ P2：create_user.py 等运维脚本容器内不存在；建议 COPY scripts/ 或文档化</td></tr>
+<tr><td>example GITHUB_REPO 示例</td><td>写的 ad-research（.env.example:121-122），实际 AD-Research</td><td class="warn">⚠️ nit</td></tr>
+<tr><td>TLS 私钥仍在 git</td><td>deploy/aliyun-ecs/ssl/www.alloyresearch.net.key 被 track（git ls-files）</td><td class="bad">❌ 既有 CRITICAL 挂账（20260817）</td></tr>
+</table>
+
+<h3>1.6 知识库（vault）覆盖</h3>
+<table>
+<tr><th>项</th><th>审计前</th><th>动作</th></tr>
+<tr><td>30-Architecture 全链路图</td><td>目录为空</td><td>已补《commit→push→CI→deploy 全链路图》（含参数速查表）</td></tr>
+<tr><td>Runbooks 索引今日文档</td><td>gitleaks/tripwires#6/handoff 已索引 ✅</td><td>只追加本次审计条目</td></tr>
+<tr><td>Reviews 索引今日文档</td><td>缺 4 篇</td><td>已追加</td></tr>
+<tr><td>密码夹具二次案例口诀</td><td>已有（部署.md L22）</td><td>无需补</td></tr>
+<tr><td>push 零触发 / 镜像只含 app / env 三处同步</td><td>缺</td><td>已补 3 条</td></tr>
+</table>
+
+<h2>2. 缺口分级清单</h2>
+<h3><span class="tag p1">P1</span> 建议主会话尽快处理</h3>
+<ol>
+<li><b>compose anchor 不透传新 env + deploy/.env.example 缺键</b>：FRONTEND_BASE_URL、AUTH_REGISTRATION_ENABLED（x-backend-env），顺带补 GLM/KIMI/CHAIN、BLS_API_KEY、CORS_ORIGINS、ENABLE_SCHEDULER、GITHUB_TOKEN/REPO、JINA_API_KEY。否则邮箱注册功能生产不可用/魔法链接指向 localhost。</li>
+<li><b>update.sh 孤儿清理 compose project 标签不匹配</b>（alloyresearch vs aliyun-ecs，update.sh:201）——先 ECS 实证标签值再修；静默失效比没有更危险。</li>
+<li><b>TLS 私钥仍在 git</b>（既有挂账，重申优先级）。</li>
+</ol>
+<h3><span class="tag p2">P2</span></h3>
+<ol start="4">
+<li>ci_gate API 错误被当"无 check"放行（ci_gate_parse.py:18-29）——校验 total_count/HTTP 码。</li>
+<li>push 事件丢失无检测（c0c5e8d 零触发）——watchdog workflow 或 push 后核对习惯。</li>
+<li>deploy 超时预算最坏 48min &gt; job 45min，双 update 失败边界会跳过自动回滚。</li>
+<li>镜像缺 scripts/（Dockerfile:85-93）。</li>
+<li>backend-ci paths 漏 agent/**、research/**、Dockerfile、deploy/**。</li>
+</ol>
+<h3><span class="tag p3">P3</span></h3>
+<ol start="9">
+<li>pre-commit（gitleaks hook 优先）+ AGENTS.md §6 成文化提交前清单。</li>
+<li>ci_gate SELF_NAME 收严全等；首轮零 check 放行竞态加最小等待窗。</li>
+<li>secrets-scan 加 timeout-minutes；verify_post_deploy.sh 挂进 deploy.yml（可选）。</li>
+<li>回滚走重建慢路径的预期管理写进 runbook。</li>
+<li>.env.example GITHUB_REPO 示例大小写修正。</li>
+</ol>
+
+<h2>3. repo 侧待主会话处理的建议清单</h2>
+<ul>
+<li>deploy/aliyun-ecs/docker-compose.yml：x-backend-env 补 FRONTEND_BASE_URL / AUTH_REGISTRATION_ENABLED / LLM_PROVIDER_CHAIN / LLM_PROVIDER_COOLDOWN_SEC / GLM_* / KIMI_*</li>
+<li>deploy/aliyun-ecs/.env.example：按根 example 补齐上述 + BLS_API_KEY / CORS_ORIGINS / ENABLE_SCHEDULER / GITHUB_TOKEN / GITHUB_REPO / JINA_API_KEY</li>
+<li>scripts/ci_gate_parse.py：非 2xx 或缺 total_count → retry/abort</li>
+<li>deploy/aliyun-ecs/update.sh:201：compose project 标签修正（先实证）</li>
+<li>.github/workflows/deploy.yml：重排超时预算</li>
+<li>.github/workflows/backend-ci.yml：paths 补 agent/** / research/** / Dockerfile / deploy/aliyun-ecs/**</li>
+<li>Dockerfile：COPY scripts/（或至少 create_user.py / reset_user_password.py）</li>
+<li>AGENTS.md：§4 补「新 Settings env 键三处同步」；§6 补提交前 gitleaks 复扫与镜像内容物说明</li>
+<li>（既有挂账）TLS 私钥 filter-repo 清历史</li>
+</ul>
+
+<h2>4. vault 补漏（本次已写入）</h2>
+<table>
+<tr><th>路径</th><th>内容</th></tr>
+<tr><td>30-Architecture/commit-push-ci-deploy-pipeline.md</td><td>全链路图 + 每环节参数速查表 + 失败定位入口</td></tr>
+<tr><td>20-Runbooks/_index.md（追加）</td><td>本次审计报告索引</td></tr>
+<tr><td>50-Reviews/_index.md（追加）</td><td>self-registration-design / backend+frontend health survey / redundant-modules review / 本次审计</td></tr>
+<tr><td>60-Lessons/部署.md（追加 3 条）</td><td>push 零 check-runs=事件丢失；镜像只含 app/；新 env 键三处同步</td></tr>
+</table>
+</main></body></html>
