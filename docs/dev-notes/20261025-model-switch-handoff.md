@@ -31,12 +31,13 @@
 - Python：ruff、black 通过；Alembic 单一 head `b3c5d7e9f1a2`。
 - 旧 iOS：standalone 认证契约/密码策略测试与全源码 `swiftc -parse` 通过。
 - native：standalone 认证契约/密码策略/刷新与改密令牌顺序测试、全源码 `swiftc -parse`、完整 macOS 应用源码 CLT `swiftc` 编译通过。
+- 生产验收（2026-10-25 补记）：`212a9ec` 已部署（中间曾被 gitleaks 误报阻断并自动回滚，详见 [gitleaks 阻断与 E2E 验收](20261025-gitleaks-deploy-block-and-e2e.md)）；公网实测登录→403 门控→改密→新令牌恢复→旧 refresh 吊销 6/6 通过，迁移 `b3c5d7e9f1a2` 已应用。
 - 全仓 Web `npm run lint` 仍有未改动文件的既有 warning，不得宣称全仓 ESLint 已清零。
 
 ### 尚未验证或明确保留的边界
 
 - 未做完整 `xcodebuild`、iOS SDK 编译、模拟器/真机 UI 或真实后端联调。
-- 生产创建用户→登录→强制改密→新 refresh token 刷新→普通 API 恢复访问，需要部署后验收；push 不等于部署成功。
+- ~~生产创建用户→登录→强制改密→新 refresh token 刷新→普通 API 恢复访问，需要部署后验收~~（2026-10-25 已完成生产验收，见上节补记与 [20261025-gitleaks-deploy-block-and-e2e.md](20261025-gitleaks-deploy-block-and-e2e.md)；push 不等于部署成功这一原则仍然成立）。
 - 正常自助改密未引入 session version，其他会话已签发的旧 access token 保留既有最长 15 分钟有效期；极端并发 refresh 竞态不在本次范围。
 - native 保留离线恢复策略，但普通在线 API 仍由后端 403 强制门控。
 - 旧 `ios/ADResearch` 的通用刷新逻辑既有只保存新 access、未保存轮换 refresh 的问题；若继续维护该归档候选客户端，需要单独修复和验收。

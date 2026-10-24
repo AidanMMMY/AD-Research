@@ -227,6 +227,26 @@ git reset --hard origin/main
   后必须 <code>get_settings.cache_clear()</code>（commit fdc92da）。</li>
 </ul>
 <hr />
+<h2>Tripwire #6：gitleaks 把测试夹具密码当泄漏，CI Gate 中止部署（2026-10-25）</h2>
+<h3>触发条件</h3>
+<p>push 里包含密码/密钥类<strong>测试夹具</strong>（高熵假密码），secrets-scan 的 gitleaks 以 <code>generic-api-key</code> 规则判红；<code>ci_gate.sh</code> 语义是「任一 failure check run → 中止」，gitleaks 出结论又快（&lt;30s），于是 deploy 在 Sync 成功后 ~11 秒被中止并<strong>自动回滚</strong>（run 40121472239，回滚到 a89a03e）。本次中招：<code>app/tests/test_user_password_scripts.py:19</code> 的夹具常量 <code>NEW_PASSWORD</code>（15 字符形如 <code>N3w-…123</code> 的高熵串，原文见 commit ee22869；文档一律用掩码形态，避免复盘文档自己再次触发 gitleaks——本次已亲测踩过）。</p>
+<h3>根因</h3>
+<ul>
+<li>高熵假密码跨过 generic-api-key 熵阈值；仓库无 <code>.gitleaks.toml</code>，走默认规则。</li>
+<li>秒败特征：job 总时长 &lt;1 分钟 + <code>deploy-failures.log</code> 出现新条目 + 容器被 rollback 用旧镜像重建。不是脏工作树、update.sh 或迁移问题。</li>
+</ul>
+<h3>修复（commit 212a9ec）</h3>
+<ul>
+<li>测试行尾加 <code># gitleaks:allow</code> 内联豁免（官方机制，夹具值不动）。</li>
+<li><code>scripts/reset_user_password.py</code> docstring 同款字符串改占位符。</li>
+</ul>
+<h3>防御</h3>
+<ul>
+<li>写密码类夹具优先低熵形态（纯小写+数字+连字符），或当场加 <code># gitleaks:allow</code>。</li>
+<li>提交前本地复扫：<code>gitleaks detect --source . --log-opts="&lt;上次push&gt;..HEAD"</code>（gitleaks 8.30.1 已 brew 安装在本地）。</li>
+<li>排障顺序：deploy-failures.log → rollback-*.log → runner <code>_diag/Worker_*.log</code> → GitHub check-runs API（仓库公开可未认证查）。</li>
+</ul>
+<p>详录见 <code>20261025-gitleaks-deploy-block-and-e2e.md</code>。</p>
 <h2>验证清单（下次 deploy 完成后核对）</h2>
 <ul>
 <li>[ ] <code>docker exec alloyresearch-backend curl http://localhost:8000/health</code> body 含 <code>git_sha=&lt;新 commit&gt;</code></li>

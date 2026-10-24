@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>gitleaks 误报阻断部署与生产 E2E 验收（2026-10-25）</title>
+<style>
+  body { font-family: -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif; max-width: 860px; margin: 2rem auto; padding: 0 1rem; line-height: 1.7; color: #1f2328; }
+  h1 { border-bottom: 2px solid #d0d7de; padding-bottom: .4rem; font-size: 1.5rem; }
+  h2 { margin-top: 2rem; font-size: 1.2rem; border-left: 4px solid #0969da; padding-left: .5rem; }
+  table { border-collapse: collapse; width: 100%; margin: 1rem 0; font-size: .92rem; }
+  th, td { border: 1px solid #d0d7de; padding: .45rem .6rem; text-align: left; vertical-align: top; }
+  th { background: #f6f8fa; }
+  code { background: #f6f8fa; padding: .1rem .35rem; border-radius: 4px; font-size: .88em; }
+  blockquote { border-left: 4px solid #d0d7de; margin: 1rem 0; padding: .2rem 1rem; color: #57606a; background: #f6f8fa; }
+  ul li { margin: .3rem 0; }
+  .ok { color: #1a7f37; font-weight: 600; }
+</style>
+</head>
+<body>
+<h1>gitleaks 误报阻断部署与生产 E2E 验收（2026-10-25）</h1>
+<blockquote>事件：<code>ee22869</code>（首登强制改密）等 6 个 commit push 后部署被 secrets-scan 误报阻断并自动回滚；修复后重新部署成功，并在生产完成改密功能全链路验收。<br>关联：Tripwire #6（20260719-deploy-tripwires）、首登强制改密与统一密码策略（20261024）、模型切换交接（20261025）</blockquote>
+
+<h2>1. 事件时间线（全部有实证）</h2>
+<table>
+<tr><th>时间 (+08)</th><th>事件</th><th>证据</th></tr>
+<tr><td>10-25 02:36:06</td><td><code>c0a8ce1</code> 提交并 push（6 commit 一次推）</td><td>本地 git；ECS origin/main 引用</td></tr>
+<tr><td>02:36:26</td><td>deploy run 40121472239 启动</td><td>runner <code>_diag/Worker_20261024-183626-utc.log</code></td></tr>
+<tr><td>02:36:28</td><td>Sync 成功，/opt 已 reset 到 c0a8ce1</td><td>Worker 日志 Step result: Succeeded；deploy-failures.log 记 current_head=c0a8ce1</td></tr>
+<tr><td>02:36:39</td><td>CI Gate 中止（仅 ~11s，非等待超时）</td><td>Worker 日志 Step result: Failed</td></tr>
+<tr><td>02:36:39–02:37:02</td><td>自动回滚：reset 回 <code>a89a03e</code>，旧镜像重建 4 容器</td><td>rollback-20261025-023639.log；容器 StartedAt</td></tr>
+<tr><td>02:37:25</td><td>job Failed 结束</td><td>deploy-failures.log 末条</td></tr>
+</table>
+
+<h2>2. 根因</h2>
+<ul>
+<li>secrets-scan 的 gitleaks 以 <code>generic-api-key</code> 规则标记 <code>app/tests/test_user_password_scripts.py:19</code> 的夹具常量 <code>NEW_PASSWORD</code>（15 字符形如 <code>N3w-…123</code> 的高熵串，原文见 commit <code>ee22869</code>）。本地 gitleaks 8.30.1 复扫同范围（<code>a89a03e..c0a8ce1</code>）确认 6 commit 中<strong>唯一命中就是这一行</strong>。</li>
+<li><code>ci_gate.sh</code> 语义「任一 failure check run → 中止部署」，与 secrets-scan 联动构成硬阻断；gitleaks 出结论快（&lt;30s），门禁首轮查询即翻红。</li>
+<li>排除项：非脏工作树（Sync 已成功）、非 update.sh（deploy-latest.log 未更新）、非迁移问题。</li>
+<li>其余 CI（Web lint/build、a11y、Backend pytest、Ruff）在 c0a8ce1 上全绿——独立佐证上会话本地验证记录。</li>
+</ul>
+
+<h2>3. 修复（commit <code>212a9ec</code>，2026-10-25 push 并部署成功）</h2>
+<table>
+<tr><th>文件</th><th>改动</th></tr>
+<tr><td><code>app/tests/test_user_password_scripts.py:19</code></td><td>行尾加 <code># gitleaks:allow</code> 内联豁免（gitleaks 官方机制，夹具值不动）</td></tr>
+<tr><td><code>scripts/reset_user_password.py:11</code></td><td>docstring 示例 <code>'N3w-passw0rd123'</code> → <code>'&lt;NEW_PASSWORD&gt;'</code>（同款字符串除患）</td></tr>
+</table>
+<p>验证：pytest 该文件 4 passed；ruff 通过；<code>gitleaks detect --log-opts="c0a8ce1..212a9ec"</code> = no leaks found。03:08 deploy <span class="ok">success</span>（gitleaks/Ruff/Backend pytest 全绿）。</p>
+
+<h2>4. 部署落地验证（03:09，SSH 只读核查）</h2>
+<ul>
+<li><code>/opt/ad-research</code> HEAD 与 backend 容器 <code>GIT_SHA</code> 均为 <code>212a9ec</code></li>
+<li><code>/health</code> status=ok（db/redis/scheduler/data 全 ok）</li>
+<li>alembic <code>current</code> = <code>b3c5d7e9f1a2</code>（head），迁移已应用</li>
+<li><code>users.must_change_password</code> boolean NOT NULL default false 已建列</li>
+</ul>
+
+<h2>5. 生产 E2E 验收（公网实测，6/6 通过）</h2>
+<table>
+<tr><th>#</th><th>步骤</th><th>期望</th><th>实测</th></tr>
+<tr><td>1</td><td>容器内按模型建测试用户（must_change_password=True）→ 登录</td><td>200，user.must_change_password=true，返回双令牌</td><td class="ok">✅</td></tr>
+<tr><td>2</td><td>GET /auth/me（access）</td><td>200 且 flag=true</td><td class="ok">✅</td></tr>
+<tr><td>3</td><td>GET /pools、GET /stocks（待改密）</td><td><strong>403</strong>（不是 401，防 axios 误判过期）</td><td class="ok">✅ 均为 403</td></tr>
+<tr><td>4</td><td>POST /auth/change-password</td><td>200 且返回新 access/refresh</td><td class="ok">✅</td></tr>
+<tr><td>5</td><td>新 access 访问 /pools、/auth/me</td><td>200；flag=false</td><td class="ok">✅</td></tr>
+<tr><td>6</td><td>旧 refresh token 再刷新</td><td>401（已吊销）</td><td class="ok">✅</td></tr>
+</table>
+<p>验收后测试用户与其 refresh token 已从生产库删除（DELETE 2 + DELETE 1，复核 remaining=0），本地令牌/密码临时文件已清理。</p>
+
+<h2>6. 沉淀口诀</h2>
+<ul>
+<li><strong>deploy 秒败（&lt;1 分钟）且日志出现 Rollback</strong> → 先看 <code>/var/log/ad-research/deploy-failures.log</code> + runner <code>_diag/Worker_*.log</code> 的 Step result 时间戳，再查 GitHub check-runs（仓库公开，未 gh auth 也能 curl）。</li>
+<li><strong>写密码/密钥类测试夹具</strong>：要么低熵形态，要么当场 <code># gitleaks:allow</code>；提交前 <code>gitleaks detect --log-opts="&lt;上次push&gt;..HEAD"</code> 本地复扫。</li>
+<li><strong>取证优先级</strong>：deploy-failures.log → rollback-*.log → Worker 日志 → check-runs API。四步内必达根因。</li>
+<li>gitleaks 已本地安装（brew，8.30.1）。</li>
+</ul>
+</body>
+</html>
