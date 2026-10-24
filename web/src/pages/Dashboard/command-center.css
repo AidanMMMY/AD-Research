@@ -932,3 +932,8 @@
     text-overflow: clip;
   }
 }
+
+/* 错误态占满脉搏区整行（2026-10-25：错误不伪装成空态） */
+.cc-pulse-error {
+  grid-column: 1 / -1;
+}

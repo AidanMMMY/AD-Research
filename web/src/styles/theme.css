@@ -942,3 +942,22 @@ html, body, #root {
   background: none;
   padding: 0;
 }
+
+/* ── Aurora Horizon tokens（2026-10-25 视觉重塑「晨昏线」）────────────
+ * 色值仅允许在此定义（stylelint ad-research/no-bare-color-values 仅豁免
+ * 本文件）。--horizon-h 由 Dashboard 按全球交易时段写入，见 aurora.css。
+ * 调色板：熔金 #e3a857（黎明）× 极光青 #59d5c8（夜）——注释留档不设变量，
+ * 用到时再提升为 token。 */
+:root {
+  --glass-bg: rgba(255, 255, 255, 0.035);
+  --glass-border: rgba(255, 255, 255, 0.08);
+  --glass-highlight: rgba(255, 255, 255, 0.14);
+  --horizon-shadow: rgba(5, 9, 20, 0.18);
+}
+
+:root[data-theme='light'] {
+  --glass-bg: rgba(255, 255, 255, 0.55);
+  --glass-border: rgba(15, 23, 42, 0.08);
+  --glass-highlight: rgba(255, 255, 255, 0.9);
+  --horizon-shadow: rgba(15, 23, 42, 0.1);
+}

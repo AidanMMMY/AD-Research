@@ -1,0 +1,216 @@
+/*
+ * Aurora Horizon — 2026-10-25 视觉重塑「晨昏线」层。
+ *
+ * 概念：多市场平台横跨时区，「太阳永远在某处交易」。Dashboard 顶部一道
+ * 极光地平线，色相由 JS 按当前交易时段写入 --horizon-h（东京暖金 38 /
+ * 欧洲青 175 / 纽约蓝 200 / 休市紫 260），既是氛围也是信息。
+ * 约束：只新增 token 不改 --vital-*；双主题；prefers-reduced-motion 全关；
+ * 数据可读性最高法则（对比度不降级）。
+ */
+
+/* ── Token：色值定义在 theme.css 的 Aurora 区块，此处仅引用 ── */
+:root {
+  --horizon-h: 38;                        /* 默认暖金，JS 按时段覆盖 */
+}
+
+/* ── 晨昏线地平带（Dashboard 签名元素）── */
+.dashboard-command-center .cc-horizon {
+  position: relative;
+  display: flex;
+  align-items: flex-end;
+  gap: var(--space-4, 16px);
+  min-height: 118px;
+  margin-bottom: var(--space-5, 20px);
+  padding: var(--space-4, 16px) var(--space-5, 20px) var(--space-3, 12px);
+  border-radius: 14px;
+  overflow: hidden;
+  isolation: isolate;
+  border: 1px solid var(--glass-border);
+  background: var(--glass-bg);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+}
+
+/* 光本体：三段式极光 —— 黎明（暖）→ 地平线亮缘 → 夜（青），色相锚 --horizon-h */
+.dashboard-command-center .cc-horizon::before {
+  content: '';
+  position: absolute;
+  inset: -60% -20%;
+  z-index: -1;
+  background:
+    radial-gradient(52% 90% at 12% 108%,
+      hsl(var(--horizon-h) 78% 58% / 0.5) 0%,
+      hsl(var(--horizon-h) 70% 50% / 0.18) 46%,
+      transparent 74%),
+    radial-gradient(46% 82% at 62% 118%,
+      hsl(calc(var(--horizon-h) + 24) 62% 52% / 0.3) 0%,
+      transparent 70%),
+    radial-gradient(70% 120% at 100% 100%,
+      hsl(calc(var(--horizon-h) - 40) 48% 46% / 0.22) 0%,
+      transparent 66%);
+  animation: aurora-drift 46s ease-in-out infinite alternate;
+}
+
+/* 地平亮缘：底部 1px 渐隐光边，像大气折射 */
+.dashboard-command-center .cc-horizon::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    hsl(var(--horizon-h) 82% 64% / 0.65) 22%,
+    hsl(calc(var(--horizon-h) + 28) 76% 62% / 0.45) 58%,
+    transparent 100%
+  );
+  pointer-events: none;
+}
+
+.dashboard-command-center .cc-horizon__title {
+  font-size: clamp(22px, 3vw, 30px);
+  font-weight: 650;
+  letter-spacing: -0.02em;
+  color: var(--cc-text, inherit);
+  line-height: 1.15;
+}
+
+.dashboard-command-center .cc-horizon__eyebrow {
+  font-family: var(--font-mono);
+  font-size: var(--text-label-size, 12px);
+  font-weight: 500;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: hsl(var(--horizon-h) 70% 68%);
+  margin-bottom: 6px;
+}
+
+.dashboard-command-center .cc-horizon__session {
+  margin-left: auto;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
+  text-align: right;
+}
+
+.dashboard-command-center .cc-horizon__phase {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 4px 12px;
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: 500;
+  color: hsl(var(--horizon-h) 82% 72%);
+  background: hsl(var(--horizon-h) 70% 50% / 0.12);
+  border: 1px solid hsl(var(--horizon-h) 70% 60% / 0.28);
+}
+
+/* 时段徽标内的「呼吸点」：市场在呼吸 */
+.dashboard-command-center .cc-horizon__phase::before {
+  content: '';
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: hsl(var(--horizon-h) 85% 62%);
+  box-shadow: 0 0 8px hsl(var(--horizon-h) 85% 60% / 0.8);
+  animation: horizon-breathe 3.2s ease-in-out infinite;
+}
+
+.dashboard-command-center .cc-horizon__phase-sub {
+  font-size: 12px;
+  color: var(--cc-muted, var(--text-secondary));
+  font-variant-numeric: tabular-nums;
+}
+
+/* ── 玻璃卡面（作用于指挥中心卡片层）── */
+.dashboard-command-center .cc-card,
+.dashboard-command-center .cc-pulse-grid {
+  position: relative;
+  border: 1px solid var(--glass-border);
+  border-radius: 14px;
+  background: var(--glass-bg);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  box-shadow:
+    inset 0 1px 0 var(--glass-highlight),
+    0 8px 28px var(--horizon-shadow);
+}
+
+/* ── 脉搏格：等宽数字 + 强波动光晕 ── */
+.dashboard-command-center .cc-pulse-item__value {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.01em;
+}
+
+.dashboard-command-center .cc-pulse-item--hot .cc-pulse-item__value {
+  text-shadow: 0 0 14px currentColor;
+}
+
+/* 入场：一次性的抬升浮现（非循环，不加噪音） */
+.dashboard-command-center .cc-horizon,
+.dashboard-command-center .cc-card,
+.dashboard-command-center .cc-pulse-grid {
+  animation: horizon-rise 480ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.dashboard-command-center .cc-card:nth-of-type(2),
+.dashboard-command-center .cc-pulse-grid {
+  animation-delay: 70ms;
+}
+
+/* ── 外壳呼应：侧边栏顶端与地平线同源的极淡洗色 ── */
+.app-layout__nav {
+  background-image: linear-gradient(
+    180deg,
+    hsl(var(--horizon-h) 60% 50% / 0.05) 0%,
+    transparent 26%
+  );
+}
+
+@keyframes aurora-drift {
+  0% {
+    transform: translate3d(-2.5%, -1.5%, 0) scale(1);
+  }
+  100% {
+    transform: translate3d(2.5%, 1.5%, 0) scale(1.06);
+  }
+}
+
+@keyframes horizon-breathe {
+  0%,
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.45;
+    transform: scale(0.72);
+  }
+}
+
+@keyframes horizon-rise {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* ── Reduced motion：光停、呼吸停、入场直接就位 ── */
+@media (prefers-reduced-motion: reduce) {
+  .dashboard-command-center .cc-horizon::before,
+  .dashboard-command-center .cc-horizon__phase::before,
+  .dashboard-command-center .cc-horizon,
+  .dashboard-command-center .cc-card,
+  .dashboard-command-center .cc-pulse-grid {
+    animation: none;
+  }
+}

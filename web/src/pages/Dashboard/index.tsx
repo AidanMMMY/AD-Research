@@ -1,6 +1,7 @@
 import './command-center.css';
 
 import { useMemo } from 'react';
+import type { CSSProperties } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { GlobalOutlined } from '@ant-design/icons';
 import { useQuery, keepPreviousData } from '@tanstack/react-query';
@@ -14,6 +15,7 @@ import {
 } from '@/utils/datetime';
 import { newsApi } from '@/api/news';
 import { useMacroLatest, macroApi } from '@/api/macro';
+import ErrorState from '@/components/ErrorState';
 import { codeToRegion } from '../../utils/macroRegion';
 import EmptyState from '@/components/EmptyState';
 import LoadingBlock from '@/components/LoadingBlock';
@@ -171,9 +173,9 @@ function useDashboardStatsKpis() {
 
 /** 为全球资产脉搏卡片聚合宏观/实时行情数据。 */
 function useGlobalPulseData() {
-  const { data: latestGlobal, isLoading: gLoading } = useMacroLatest('global');
-  const { data: latestUs, isLoading: uLoading } = useMacroLatest('us');
-  const { data: rtGlobal, isLoading: rtLoading } = useQuery({
+  const { data: latestGlobal, isLoading: gLoading, isError: gError, refetch: gRefetch } = useMacroLatest('global');
+  const { data: latestUs, isLoading: uLoading, isError: uError, refetch: uRefetch } = useMacroLatest('us');
+  const { data: rtGlobal, isLoading: rtLoading, isError: rtError, refetch: rtRefetch } = useQuery({
     queryKey: ['macro', 'indices', 'global', 'realtime'],
     queryFn: async () => {
       const res = await macroApi.getGlobalIndicesRealtime();
@@ -209,6 +211,14 @@ function useGlobalPulseData() {
   }, [latestGlobal, latestUs, rtGlobal]);
 
   const isLoading = gLoading || uLoading || rtLoading;
+  // 错误不伪装成空态（ErrorState 组件核心原则）：三路全挂或任一路挂都
+  // 明示失败并给重试出口，而不是让脉搏格静默显示 "--"。
+  const isError = gError || uError || rtError;
+  const refetch = () => {
+    gRefetch();
+    uRefetch();
+    rtRefetch();
+  };
 
   const groups = useMemo(() => {
     return PULSE_GROUPS.map((g) => ({
@@ -238,7 +248,7 @@ function useGlobalPulseData() {
     }));
   }, [lookup, marketLatest]);
 
-  return { groups, isLoading };
+  return { groups, isLoading, isError, refetch };
 }
 
 function useFundFlowCardData() {
@@ -295,7 +305,7 @@ export default function Dashboard() {
   const { favorites, count: favCount, isLoading: favLoading } = useFavorites(6);
   const { data: pools } = usePoolList();
   const statsKpis = useDashboardStatsKpis();
-  const { groups: pulseGroups, isLoading: pulseLoading } = useGlobalPulseData();
+  const { groups: pulseGroups, isLoading: pulseLoading, isError: pulseError, refetch: refetchPulse } = useGlobalPulseData();
   const { total, totalPct, topSignal, topEtf, isLoading: ffLoading } = useFundFlowCardData();
   const momentum = useScoreMomentum(5);
   const { signals, hotNews } = useSignalStream();
@@ -318,6 +328,20 @@ export default function Dashboard() {
     if (v == null) return 'var(--cc-text2)';
     return v >= 0 ? 'var(--cc-rise)' : 'var(--cc-fall)';
   };
+
+  // Aurora Horizon：晨昏线色相锚点——全球交易时段状态即视觉（2026-10-25）。
+  // 时段划分取整点近似（9-15 东京 / 15-21 欧洲 / 21-5 纽约），足够传达
+  // 「太阳永远在某处交易」的状态语义，不追求精确到分钟的交易所日历。
+  const sessionPhase = useMemo(() => {
+    const now = new Date();
+    const day = now.getDay();
+    const h = now.getHours();
+    if (day === 0 || day === 6) return { label: '周末休市', sub: '隔夜市场数据整备中', hue: 260 };
+    if (h >= 9 && h < 15) return { label: '东京时段', sub: 'A 股连续竞价', hue: 38 };
+    if (h >= 15 && h < 21) return { label: '欧洲时段', sub: '法兰克福 · 伦敦', hue: 175 };
+    if (h >= 21 || h < 5) return { label: '纽约时段', sub: '美股交易中', hue: 200 };
+    return { label: '休市间隙', sub: '盘前数据整备', hue: 260 };
+  }, []);
 
   return (
     <div className="dashboard-command-center">
@@ -345,9 +369,19 @@ export default function Dashboard() {
 
       <div className="cc-layout">
         <main className="cc-main">
-          <header className="cc-header">
-            <div className="cc-header__eyebrow">MARKET COMMAND CENTER</div>
-            <h1 className="cc-header__title">市场指挥中心</h1>
+          {/* Aurora Horizon — 签名元素：色相=当前全球交易时段 */}
+          <header
+            className="cc-horizon"
+            style={{ '--horizon-h': sessionPhase.hue } as CSSProperties}
+          >
+            <div>
+              <div className="cc-horizon__eyebrow">{dateString} · AlloyResearch</div>
+              <h1 className="cc-horizon__title">市场指挥中心</h1>
+            </div>
+            <div className="cc-horizon__session">
+              <span className="cc-horizon__phase">{sessionPhase.label}</span>
+              <span className="cc-horizon__phase-sub">{sessionPhase.sub}</span>
+            </div>
           </header>
 
           {/* Global Pulse */}
@@ -372,7 +406,15 @@ export default function Dashboard() {
               </span>
             </div>
             <div className="cc-pulse-groups">
-              {pulseGroups.map((group) => (
+              {pulseError && !pulseLoading ? (
+                <ErrorState
+                  title="全球资产脉搏加载失败"
+                  description="行情/宏观数据源暂不可用，重试或稍后再来"
+                  onRetry={refetchPulse}
+                  retrying={pulseLoading}
+                  className="cc-pulse-error"
+                />
+              ) : pulseGroups.map((group) => (
                 <div key={group.key} className="cc-pulse-group">
                   <div className="cc-pulse-group__label">{group.label}</div>
                   <div className="cc-pulse-group__tiles">
@@ -381,7 +423,7 @@ export default function Dashboard() {
                       return (
                         <div
                           key={tile.code}
-                          className="cc-pulse-item"
+                          className={`cc-pulse-item${change !== null && Math.abs(change) >= 2 ? ' cc-pulse-item--hot' : ''}`}
                           role="button"
                           tabIndex={0}
                           onClick={() =>

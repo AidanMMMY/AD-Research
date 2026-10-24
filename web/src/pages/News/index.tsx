@@ -12,7 +12,6 @@ import {
   Badge,
   Space,
   Spin,
-  Button,
   message,
 } from 'antd';
 import {
@@ -36,6 +35,7 @@ import FilterToolbar from '@/components/FilterToolbar';
 import { FilterSheetButton } from '@/components/BottomSheet';
 import Panel from '@/components/Panel';
 import EmptyState from '@/components/EmptyState';
+import ErrorState from '@/components/ErrorState';
 import NewsCard, { SOURCE_LABELS } from '@/components/NewsCard';
 import NewsDetailDrawer from '@/components/NewsDetailDrawer';
 import LoadingBlock from '@/components/LoadingBlock';
@@ -645,15 +645,11 @@ export default function NewsFeed() {
         <div className="ad-news-feed">
           {isError ? (
             /* N1（2026-08-03）：加载失败给出明确的重试出口，
-               不再只能整页刷新。 */
-            <EmptyState
+               不再只能整页刷新。2026-10-25 收敛到统一 ErrorState。 */
+            <ErrorState
               title="加载失败，请稍后重试"
               description="网络异常或服务暂不可用，请稍后再试"
-              action={
-                <Button type="primary" onClick={() => refetch()}>
-                  重试
-                </Button>
-              }
+              onRetry={() => refetch()}
             />
           ) : isLoading ? (
             <div className="ad-p-5">

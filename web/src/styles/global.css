@@ -18,6 +18,7 @@
 @import "./global/components-cleanup.css";
 @import "./global/pages-admin.css";
 @import "./global/pages-list-cleanup.css";
+@import "./global/aurora.css";
 @import "./global/pages-ai-admin-cleanup.css";
 @import "./global/login.css";
 @import "./global/register.css";
