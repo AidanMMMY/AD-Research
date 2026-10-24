@@ -19,6 +19,7 @@
 
 - 分支：`main`。
 - 功能基线 commit：`ee22869`（首登强制改密与统一密码策略）。
+- native 最终复审修复：`0bcd07f`（序列化刷新令牌持久化，统一 Swift/后端 Unicode 计数）。
 - 同批已有文档 commit：`6b765a3`（知识库指针）、`d10e770`（非 Web 端与平台瘦身评估）。
 - 本文件是交接索引；远端是否同步、部署是否成功，必须在新会话现场查询，不能由本文预先断言。
 - 切换时先确认工作树是否干净；若有新改动，以实际 `git status` 和 `git diff` 为准，不要强行恢复到本文时点。
@@ -29,7 +30,7 @@
 - Web：本次改动文件 ESLint 零 warning；stylelint、TypeScript、Vite build 通过；19 个测试文件、96 tests 通过。
 - Python：ruff、black 通过；Alembic 单一 head `b3c5d7e9f1a2`。
 - 旧 iOS：standalone 认证契约/密码策略测试与全源码 `swiftc -parse` 通过。
-- native：standalone 认证契约/密码策略测试、全源码 `swiftc -parse`、完整 macOS 应用源码 CLT `swiftc` 编译通过。
+- native：standalone 认证契约/密码策略/刷新与改密令牌顺序测试、全源码 `swiftc -parse`、完整 macOS 应用源码 CLT `swiftc` 编译通过。
 - 全仓 Web `npm run lint` 仍有未改动文件的既有 warning，不得宣称全仓 ESLint 已清零。
 
 ### 尚未验证或明确保留的边界
@@ -38,6 +39,7 @@
 - 生产创建用户→登录→强制改密→新 refresh token 刷新→普通 API 恢复访问，需要部署后验收；push 不等于部署成功。
 - 正常自助改密未引入 session version，其他会话已签发的旧 access token 保留既有最长 15 分钟有效期；极端并发 refresh 竞态不在本次范围。
 - native 保留离线恢复策略，但普通在线 API 仍由后端 403 强制门控。
+- 旧 `ios/ADResearch` 的通用刷新逻辑既有只保存新 access、未保存轮换 refresh 的问题；若继续维护该归档候选客户端，需要单独修复和验收。
 - 平台瘦身报告只是建议，未授权不得删除旧客户端、research/agent 或停止生产服务。
 
 详细实现见 [首登强制改密与统一密码策略](20261024-first-login-password-policy.md)，范围治理见 [非 Web 端与平台瘦身综合评估](20261025-platform-slimming-review.md)。

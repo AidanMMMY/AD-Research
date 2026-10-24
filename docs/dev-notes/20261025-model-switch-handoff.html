@@ -22,6 +22,7 @@ blockquote{border-left:4px solid #4a6cf7;margin:16px 0;padding:8px 16px;backgrou
 <ul>
 <li>分支：<code>main</code>。</li>
 <li>功能基线 commit：<code>ee22869</code>（首登强制改密与统一密码策略）。</li>
+<li>native 最终复审修复：<code>0bcd07f</code>（序列化刷新令牌持久化，统一 Swift/后端 Unicode 计数）。</li>
 <li>同批已有文档 commit：<code>6b765a3</code>（知识库指针）、<code>d10e770</code>（非 Web 端与平台瘦身评估）。</li>
 <li>本文件是交接索引；远端是否同步、部署是否成功，必须在新会话现场查询，不能由本文预先断言。</li>
 <li>切换时先确认工作树是否干净；若有新改动，以实际 <code>git status</code> 和 <code>git diff</code> 为准，不要强行恢复到本文时点。</li>
@@ -32,7 +33,7 @@ blockquote{border-left:4px solid #4a6cf7;margin:16px 0;padding:8px 16px;backgrou
 <li>Web：本次改动文件 ESLint 零 warning；stylelint、TypeScript、Vite build 通过；19 个测试文件、96 tests 通过。</li>
 <li>Python：ruff、black 通过；Alembic 单一 head <code>b3c5d7e9f1a2</code>。</li>
 <li>旧 iOS：standalone 认证契约/密码策略测试与全源码 <code>swiftc -parse</code> 通过。</li>
-<li>native：standalone 认证契约/密码策略测试、全源码 <code>swiftc -parse</code>、完整 macOS 应用源码 CLT <code>swiftc</code> 编译通过。</li>
+<li>native：standalone 认证契约/密码策略/刷新与改密令牌顺序测试、全源码 <code>swiftc -parse</code>、完整 macOS 应用源码 CLT <code>swiftc</code> 编译通过。</li>
 <li>全仓 Web <code>npm run lint</code> 仍有未改动文件的既有 warning，不得宣称全仓 ESLint 已清零。</li>
 </ul>
 <h3>尚未验证或明确保留的边界</h3>
@@ -41,6 +42,7 @@ blockquote{border-left:4px solid #4a6cf7;margin:16px 0;padding:8px 16px;backgrou
 <li>生产创建用户→登录→强制改密→新 refresh token 刷新→普通 API 恢复访问，需要部署后验收；push 不等于部署成功。</li>
 <li>正常自助改密未引入 session version，其他会话已签发的旧 access token 保留既有最长 15 分钟有效期；极端并发 refresh 竞态不在本次范围。</li>
 <li>native 保留离线恢复策略，但普通在线 API 仍由后端 403 强制门控。</li>
+<li>旧 <code>ios/ADResearch</code> 的通用刷新逻辑既有只保存新 access、未保存轮换 refresh 的问题；若继续维护该归档候选客户端，需要单独修复和验收。</li>
 <li>平台瘦身报告只是建议，未授权不得删除旧客户端、research/agent 或停止生产服务。</li>
 </ul>
 <p>详细实现见 <a href="20261024-first-login-password-policy.md">首登强制改密与统一密码策略</a>，范围治理见 <a href="20261025-platform-slimming-review.md">非 Web 端与平台瘦身综合评估</a>。</p>
