@@ -169,6 +169,11 @@ npm run check:ci                  # stylelint + tsc --noEmit + vite build
 
 ## 10. 其他约定
 
+- **项目知识库 vault**：`~/Documents/AlloyResearch-KB`（Obsidian，本地机器上）。
+  排障前先查其 `20-Runbooks/_index.md` 与 `60-Lessons/`；事故/大修收尾时，
+  长期有效的知识除写入 dev-notes 外，应策展进 vault（runbook/ADR/口诀）。
+  分工契约见 vault 的 README.md；vault 是策展层，dev-notes 是事实源。
+
 - 文档命名：`docs/dev-notes/YYYYMMDD-主题.md`（同主题常配一份 `.html` 导出）
 - `tmp/` 为临时实验区，不要把一次性脚本提升为正式代码而不移入合适目录
 - `agent/` 目录的采集 worker 与主平台同仓库但独立部署（独立镜像、cron 触发，ECS 上位于 `/root/ad-research/agent/`）
