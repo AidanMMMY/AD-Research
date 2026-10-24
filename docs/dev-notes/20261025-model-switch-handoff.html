@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>20261025-model-switch-handoff</title><style>
+body{font-family:-apple-system,BlinkMacSystemFont,'PingFang SC',sans-serif;max-width:1080px;margin:40px auto;padding:0 22px;line-height:1.75;color:#182033;background:#fff}
+h1{border-bottom:2px solid #4a6cf7;padding-bottom:10px}h2{margin-top:36px;color:#253b6e}h3{margin-top:28px;color:#3b4f7c}h4{margin-bottom:6px}
+a{color:#3157c8}code{background:#f0f2f8;padding:1px 5px;border-radius:4px;font-size:13px}pre{background:#101827;color:#e5edf8;padding:16px;border-radius:8px;overflow:auto}pre code{background:none;padding:0}
+table{border-collapse:collapse;width:100%;margin:16px 0;font-size:14px}th,td{border:1px solid #d9dfeb;padding:8px 10px;text-align:left;vertical-align:top}th{background:#f4f6fb}
+blockquote{border-left:4px solid #4a6cf7;margin:16px 0;padding:8px 16px;background:#f7f9ff;color:#505b71}li{margin:5px 0}strong{color:#101a30}
+</style></head><body>
+<h1>编码助手模型切换与会话交接 Runbook</h1>
+<blockquote>日期：2026-10-25<br>适用对象：Claude Code / VSCode 中协助开发 AlloyResearch 的编码助手<br>不适用范围：平台业务侧 MiniMax→GLM→Kimi provider 链；两者不要混改配置</blockquote>
+<h2>1. 为什么需要外置交接</h2>
+<p>模型标称上下文上限、宿主实际会话窗口和自动压缩触发线不是同一个概念。即使模型支持大上下文，Claude Code 也可能为系统提示、工具定义、工具结果和后续输出预留空间而提前压缩。压缩摘要是有损的工作线索，不应成为唯一事实源。</p>
+<p>本项目按以下分层保存事实：</p>
+<ol>
+<li>Git 工作树、commit 与测试：当前代码和可验证结果。</li>
+<li><code>docs/dev-notes/</code>：实现、排障和决策的事实源。</li>
+<li><code>~/Documents/AlloyResearch-KB</code>：runbook、口诀和长期经验的策展层。</li>
+<li>助手 memory：用户偏好与事实源指针，不替代代码和文档。</li>
+</ol>
+<h2>2. 本次切换基线</h2>
+<ul>
+<li>分支：<code>main</code>。</li>
+<li>功能基线 commit：<code>ee22869</code>（首登强制改密与统一密码策略）。</li>
+<li>同批已有文档 commit：<code>6b765a3</code>（知识库指针）、<code>d10e770</code>（非 Web 端与平台瘦身评估）。</li>
+<li>本文件是交接索引；远端是否同步、部署是否成功，必须在新会话现场查询，不能由本文预先断言。</li>
+<li>切换时先确认工作树是否干净；若有新改动，以实际 <code>git status</code> 和 <code>git diff</code> 为准，不要强行恢复到本文时点。</li>
+</ul>
+<h3>已完成的本地验证</h3>
+<ul>
+<li>后端：1951 passed，2 skipped。</li>
+<li>Web：本次改动文件 ESLint 零 warning；stylelint、TypeScript、Vite build 通过；19 个测试文件、96 tests 通过。</li>
+<li>Python：ruff、black 通过；Alembic 单一 head <code>b3c5d7e9f1a2</code>。</li>
+<li>旧 iOS：standalone 认证契约/密码策略测试与全源码 <code>swiftc -parse</code> 通过。</li>
+<li>native：standalone 认证契约/密码策略测试、全源码 <code>swiftc -parse</code>、完整 macOS 应用源码 CLT <code>swiftc</code> 编译通过。</li>
+<li>全仓 Web <code>npm run lint</code> 仍有未改动文件的既有 warning，不得宣称全仓 ESLint 已清零。</li>
+</ul>
+<h3>尚未验证或明确保留的边界</h3>
+<ul>
+<li>未做完整 <code>xcodebuild</code>、iOS SDK 编译、模拟器/真机 UI 或真实后端联调。</li>
+<li>生产创建用户→登录→强制改密→新 refresh token 刷新→普通 API 恢复访问，需要部署后验收；push 不等于部署成功。</li>
+<li>正常自助改密未引入 session version，其他会话已签发的旧 access token 保留既有最长 15 分钟有效期；极端并发 refresh 竞态不在本次范围。</li>
+<li>native 保留离线恢复策略，但普通在线 API 仍由后端 403 强制门控。</li>
+<li>平台瘦身报告只是建议，未授权不得删除旧客户端、research/agent 或停止生产服务。</li>
+</ul>
+<p>详细实现见 <a href="20261024-first-login-password-policy.md">首登强制改密与统一密码策略</a>，范围治理见 <a href="20261025-platform-slimming-review.md">非 Web 端与平台瘦身综合评估</a>。</p>
+<h2>3. 推荐切换步骤</h2>
+<ol>
+<li>在任务边界切换，不在修到一半、测试失败原因未明或部署状态未知时切换。</li>
+<li>确认 commit 已包含代码、迁移、测试和 md/html 文档；记录实际 SHA，而非只记分支名。</li>
+<li>切换编码助手模型后，优先开一个干净的新会话，避免继续携带长会话和多次压缩摘要。</li>
+<li>新会话先只做现场重建和基线核对，再给小范围任务；不要一开始就让它跨模块重构。</li>
+<li>不因为换模型而重跑所有已验证工作；但如果实际代码与基线不同，必须重新验证受影响范围。</li>
+</ol>
+<h2>4. 新会话固定恢复提示</h2>
+<p>将下面整段发给新模型：</p>
+<pre><code class="language-text">你在 AlloyResearch 仓库工作。先不要修改代码，也不要 push。
+
+请先读取：
+1. AGENTS.md
+2. docs/dev-notes/20261025-model-switch-handoff.md
+3. docs/dev-notes/20261024-first-login-password-policy.md
+4. 如任务涉及架构范围，再读 docs/dev-notes/20261025-platform-slimming-review.md
+5. 排障时先查 ~/Documents/AlloyResearch-KB/20-Runbooks/_index.md 和 60-Lessons/
+
+然后实际执行并核对 git status --short --branch、git log -5 --oneline --decorate，
+必要时查看 git diff。请用中文汇报：当前真实停点、与交接文档的差异、已有验证证据、
+尚未验证项和你建议的最小下一步。不要把历史摘要当成当前事实，不要声称未亲自验证的测试或部署已通过。
+后续没有我的明确命令不得 push。</code></pre>
+<h2>5. 切换后的防漂移规则</h2>
+<ul>
+<li>新模型引用文件、配置或命令前，先确认其在当前工作树存在；文档可能有时点性。</li>
+<li>修改行为先补能复现问题的测试，提交前独立查看 staged diff，并运行受影响测试。</li>
+<li>agent 的报告只是线索，主会话必须核对 diff 和验证结果。</li>
+<li>发现文档与代码冲突时，以当前代码、数据库迁移链和可复现结果为依据，同时修正文档。</li>
+<li>不把一次性明文密码、真实密钥或个人凭据写进交接文档、memory、vault 或提交。</li>
+<li>回滚优先针对具体 commit 做可审计的 <code>git revert</code>；不要在共享 <code>main</code> 上擅自 reset 或 force push。</li>
+</ul>
+</body></html>
