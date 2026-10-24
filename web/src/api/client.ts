@@ -40,6 +40,17 @@ client.interceptors.response.use(
   async (error) => {
     const originalRequest = error.config;
 
+    // 2026-10-24: never run the session-expiry hard redirect for the auth
+    // endpoints themselves. A 401 from /auth/login means "wrong password",
+    // and the redirect used to nuke the page (and the error toast with it)
+    // before Login.tsx could render it — users saw a silent flash back to
+    // the login page with no message. Let the error propagate so the page
+    // can show its own feedback.
+    const requestUrl: string = originalRequest?.url ?? '';
+    if (requestUrl.includes('/auth/login') || requestUrl.includes('/auth/refresh')) {
+      return Promise.reject(error);
+    }
+
     if (error.response?.status === 401 && !originalRequest._retry) {
       const refreshToken = localStorage.getItem('refresh_token');
 
