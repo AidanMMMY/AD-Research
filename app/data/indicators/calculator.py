@@ -171,7 +171,9 @@ def _safe_float(value, precision: int | None = None, scale: int | None = None) -
     if value is None or pd.isna(value):
         return None
     if isinstance(value, int | float):
-        if pd.isna(value) or (isinstance(value, float) and (value == float("inf") or value == float("-inf"))):
+        if pd.isna(value) or (
+            isinstance(value, float) and (value == float("inf") or value == float("-inf"))
+        ):
             return None
         f = float(value)
     else:
@@ -225,11 +227,7 @@ def calculate_single_etf(
     if "qfq_close" not in df.columns:
         adj_factor = df.get("adj_factor", pd.Series(1.0, index=df.index))
         latest_adj_factor = float(adj_factor.iloc[-1] if len(adj_factor) else 1.0)
-        df["qfq_close"] = (
-            df["close"].astype(float)
-            * adj_factor.astype(float)
-            / latest_adj_factor
-        )
+        df["qfq_close"] = df["close"].astype(float) * adj_factor.astype(float) / latest_adj_factor
 
     # All indicators are now computed on the 前复权 close so that
     # technical, risk, and return metrics stay comparable across
@@ -279,8 +277,7 @@ def _drop_empty_indicator_rows(
         all_null = all(record.get(col) is None for col in _INDICATOR_COLUMNS)
         if all_null:
             logger.info(
-                "%s: skipped empty result for code=%s date=%s "
-                "(all %d indicators NULL)",
+                "%s: skipped empty result for code=%s date=%s " "(all %d indicators NULL)",
                 origin,
                 record.get("etf_code"),
                 record.get("trade_date"),
@@ -299,6 +296,16 @@ _ETL_JOB_NAMES = {
     "US": "us_indicator_calculation",
     "CRYPTO": "crypto_indicator_calculation",
 }
+
+
+def etl_job_name_for_market(market_filter: str | None) -> str:
+    """Resolve the ETLLog job name for a market-scoped indicator run.
+
+    Public accessor over ``_ETL_JOB_NAMES`` so the Celery task wrapper
+    (``app.tasks.indicator``) can look up the same job name when reading
+    back the run's terminal status for the completion marker.
+    """
+    return _ETL_JOB_NAMES.get(market_filter, "indicator_calc")
 
 
 def batch_calculate_indicators(
@@ -344,7 +351,7 @@ def batch_calculate_indicators(
 
     # Resolve the ETLLog job name for the requested market (see
     # _ETL_JOB_NAMES) so the ops dashboard can attribute this run.
-    job_name = _ETL_JOB_NAMES.get(market_filter, "indicator_calc")
+    job_name = etl_job_name_for_market(market_filter)
 
     # Query all active ETFs, optionally filtering by market
     # Exclude delisted instruments (delist_date < target_date)
@@ -395,7 +402,9 @@ def batch_calculate_indicators(
             codes_with_bars = {
                 row[0]
                 for row in db.execute(
-                    select(InstrumentDailyBar.etf_code).distinct().where(
+                    select(InstrumentDailyBar.etf_code)
+                    .distinct()
+                    .where(
                         InstrumentDailyBar.etf_code.in_(code_meta.keys()),
                         InstrumentDailyBar.trade_date <= effective_target,
                     )
@@ -479,6 +488,7 @@ def batch_calculate_indicators(
 
     return updated_count
 
+
 def _calculate_single_code_pandas(
     db: Session,
     etf_code: str,
@@ -541,10 +551,7 @@ def _calculate_single_code_pandas(
             return []
 
         if full_history:
-            records = [
-                _build_indicator_record(etf_code, row)
-                for _, row in result_df.iterrows()
-            ]
+            records = [_build_indicator_record(etf_code, row) for _, row in result_df.iterrows()]
         else:
             latest_row = result_df.iloc[-1]
             records = [_build_indicator_record(etf_code, latest_row)]
@@ -644,9 +651,7 @@ def _batch_calculate_indicators_sql(
                 len(chunk),
             )
             for etf_code in chunk:
-                list_date, delist_date, _market = code_meta.get(
-                    etf_code, (None, None, market)
-                )
+                list_date, delist_date, _market = code_meta.get(etf_code, (None, None, market))
                 records = _calculate_single_code_pandas(
                     db, etf_code, list_date, delist_date, target_date, full_history, market=_market
                 )

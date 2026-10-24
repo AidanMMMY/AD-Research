@@ -6,13 +6,16 @@ scoring, report generation, market scan, and signal generation jobs.
 
 import json
 import logging
-from datetime import UTC, date, datetime
+from datetime import UTC, date, datetime, time, timedelta
+from functools import partial
 from pathlib import Path
 from typing import Any
+from zoneinfo import ZoneInfo
 
 from apscheduler.executors.pool import ThreadPoolExecutor
 from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.cron import CronTrigger
+from apscheduler.triggers.date import DateTrigger
 from apscheduler.triggers.interval import IntervalTrigger
 
 from app.core.database import SessionLocal
@@ -49,7 +52,7 @@ from app.services.scoring_service import ScoringService
 from app.services.signal_service import SignalService
 from app.strategies.base import StrategyRegistry
 from app.tasks.cninfo import refresh_cninfo_reports_daily
-from app.tasks.indicator import calculate_indicators
+from app.tasks.indicator import INDICATOR_MIN_COVERAGE, calculate_indicators, indicator_done_key
 
 # Limit the default APScheduler thread pool. The default 20 workers can
 # launch too many long-running DB-holding jobs concurrently and exhaust the
@@ -87,7 +90,38 @@ _LOCK_DAILY_PIPELINE = "daily_pipeline"
 
 # Running ETL jobs older than this are considered stuck and will be cleaned
 # up before the next scheduled run (see ``cleanup_stuck_etl_jobs``).
+# This is the **default** for jobs without a dedicated entry in
+# ``_ETL_JOB_MAX_RUNTIME_MINUTES`` below.
 _STUCK_ETL_THRESHOLD_MINUTES = 120
+
+# 2026-10-25（P1-1，docs/dev-notes/20261025-backend-health-survey.md）：
+# 一刀切的 120 分钟阈值会误杀合法长任务——每小时 :45 的
+# ``cleanup_stuck_etl_jobs`` 把仍在跑的 ETLLog 标 failed 并删掉仍被合法
+# 持有的 Redis 锁（最典型：信号生成锁 TTL 公式可到 4h，锁被提前删掉后
+# ``paper_trade_auto`` 09:30 起可与仍在运行的信号生成并发执行）。清理
+# 阈值是护栏不是闹钟，必须 ≥ 每个 job 的最长合法运行，且按 job 分级：
+#   * indicator_calculation / us_* / crypto_* / indicator_calc（泛型名）：
+#     Celery 指标任务硬限 6h（``app/tasks/indicator.py`` time_limit）。
+#   * signal_generation：daily_pipeline 锁 TTL = max(1800, min(14400, ...))
+#     → 最长 4h（见 ``run_signal_generation``）。
+#   * a_share_adj_factor_backfill：redis_lock expire_seconds=14400 → 4h。
+#   * 其余 job（日线 ETL / 发现 / 财报等）维持默认 2h。
+_ETL_JOB_MAX_RUNTIME_MINUTES: dict[str, int] = {
+    "indicator_calculation": 360,
+    "us_indicator_calculation": 360,
+    "crypto_indicator_calculation": 360,
+    "indicator_calc": 360,
+    "signal_generation": 240,
+    "a_share_adj_factor_backfill": 240,
+}
+
+
+def _stuck_threshold_for(job_name: str | None, default: int) -> int:
+    """Return the per-job stuck threshold in minutes (default 2h)."""
+    if not job_name:
+        return default
+    return _ETL_JOB_MAX_RUNTIME_MINUTES.get(job_name, default)
+
 
 # 2026-07-19：磁盘监控阈值（/data 实际容量 118GB / resize2fs 后）。
 # 2026-07-17 /data 100% 触发 Redis 写失败 / health degraded（见 20260717-disk-full
@@ -192,10 +226,7 @@ def _acquire_indicator_date_lock(target_date: date, full_history: bool) -> bool:
     多日被挡）。
     """
     client = get_redis_client()
-    lock_key = (
-        f"ad_research:indicator:a_share:{target_date.isoformat()}"
-        f":fh={full_history}"
-    )
+    lock_key = f"ad_research:indicator:a_share:{target_date.isoformat()}" f":fh={full_history}"
     return client.set(lock_key, "1", nx=True, ex=6 * 3600) is True
 
 
@@ -221,11 +252,19 @@ def cleanup_stuck_etl_jobs(threshold_minutes: int = _STUCK_ETL_THRESHOLD_MINUTES
     be held.  This function marks those rows as ``failed`` and deletes the
     associated Redis locks so the next scheduled run is not blocked.
 
+    ``threshold_minutes`` is the **default** max runtime; jobs listed in
+    ``_ETL_JOB_MAX_RUNTIME_MINUTES`` use their own (longer) threshold so a
+    legitimate multi-hour run (signal generation up to 4h, indicator Celery
+    task up to 6h, adj_factor backfill 4h) is never reaped mid-flight
+    (P1-1, see the comment block above that dict).
+
     Returns the number of stuck rows cleaned up.
     """
-    from datetime import timedelta
-
-    cutoff = datetime.now(UTC) - timedelta(minutes=threshold_minutes)
+    # 预筛窗口取所有阈值的最小值：保证不会漏掉任何可能该清理的行，
+    # 再在逐行判断时用该 job 自己的阈值放行仍在合法运行时长内的行。
+    min_threshold = min([threshold_minutes, *_ETL_JOB_MAX_RUNTIME_MINUTES.values()])
+    cutoff = datetime.now(UTC) - timedelta(minutes=min_threshold)
+    now = datetime.now(UTC)
     cleaned = 0
 
     with SessionLocal() as db:
@@ -242,23 +281,48 @@ def cleanup_stuck_etl_jobs(threshold_minutes: int = _STUCK_ETL_THRESHOLD_MINUTES
 
         logger = logging.getLogger(__name__)
         logger.warning(
-            "Found %d stuck ETL job(s) older than %d minutes",
+            "Found %d running ETL job(s) older than %d minutes (min threshold); "
+            "applying per-job thresholds",
             len(stuck_logs),
-            threshold_minutes,
+            min_threshold,
         )
 
         client = get_redis_client()
         for log in stuck_logs:
             job_name = log.job_name or "unknown"
+            threshold = _stuck_threshold_for(job_name, threshold_minutes)
+            # SQLite 返回 naive datetime（DateTime(timezone=True) 不生效），
+            # 统一补 UTC 再做差。
+            started = log.start_time
+            if started is not None and started.tzinfo is None:
+                started = started.replace(tzinfo=UTC)
+            age_minutes = (now - started).total_seconds() / 60 if started is not None else None
+            # 仍在该 job 合法运行时长内（如跑了 3h 的信号生成）——放行，
+            # 只记 info，绝不标 failed / 删活锁。
+            if age_minutes is not None and age_minutes < threshold:
+                logger.info(
+                    "ETL job %s has been running %.0f min (< its %d min "
+                    "threshold); leaving it alone",
+                    job_name,
+                    age_minutes,
+                    threshold,
+                )
+                continue
+
             start = log.start_time.isoformat() if log.start_time else "?"
-            logger.info("Cleaning up stuck ETL job %s (started %s)", job_name, start)
+            logger.warning(
+                "Cleaning up stuck ETL job %s (started %s, age %.0f min >= " "threshold %d min)",
+                job_name,
+                start,
+                age_minutes or -1,
+                threshold,
+            )
 
             log.status = "failed"
-            log.end_time = datetime.now(UTC)
+            log.end_time = now
             log.error_msg = (
-                (log.error_msg or "")
-                + "; [scheduler-cleanup] process terminated or lease expired"
-            )
+                log.error_msg or ""
+            ) + "; [scheduler-cleanup] process terminated or lease expired"
             cleaned += 1
 
             for lock_name in _lock_names_for_job(job_name):
@@ -277,6 +341,43 @@ def cleanup_stuck_etl_jobs(threshold_minutes: int = _STUCK_ETL_THRESHOLD_MINUTES
             raise
 
     return cleaned
+
+
+# ── Scheduler loop-failure observability (P1-3, 2026-10-25) ──────────────────
+#
+# 背景：docs/dev-notes/20261025-backend-health-survey.md P1-3——
+# ``run_paper_trade_auto`` 等调度循环里的 ``except Exception: continue``
+# 零日志零计数，任何失败（行情超时、配额、下架币）完全不可观测。
+# 统一走本助手：warning 日志（含异常与标的/账户上下文）+ 带日期的 Redis
+# 失败计数器（key 按日滚动、TTL 7 天防膨胀，供 watchdog / 告警按日聚合）。
+_SCHEDULER_LOOP_FAILURE_PREFIX = "ad:scheduler:loop_failure"
+_SCHEDULER_LOOP_FAILURE_TTL_SECONDS = 7 * 24 * 3600
+
+
+def _record_loop_failure(job_name: str, context: str, exc: BaseException | None = None) -> None:
+    """Log a swallowed per-item scheduler-loop failure and bump a dated counter.
+
+    Args:
+        job_name: 调度 job 名（如 ``paper_trade_auto``），用作日志与计数器维度。
+        context: 失败项的上下文（如 ``account:11`` / ``etf:510300.SH``）。
+        exc: 捕获到的异常（None 时仅记 warning 文案）。
+    """
+    logger = logging.getLogger(__name__)
+    logger.warning("[scheduler-loop] %s item failed: %s", job_name, context, exc_info=exc)
+    try:
+        client = get_redis_client()
+        key = f"{_SCHEDULER_LOOP_FAILURE_PREFIX}:{job_name}:{date.today().isoformat()}"
+        pipe = client.pipeline()
+        pipe.incr(key)
+        pipe.expire(key, _SCHEDULER_LOOP_FAILURE_TTL_SECONDS)
+        pipe.execute()
+    except Exception:
+        # 计数器失败不能影响主流程；warning 日志已经留下了痕迹。
+        logger.exception(
+            "[scheduler-loop] failed to bump failure counter for %s (%s)",
+            job_name,
+            context,
+        )
 
 
 def check_disk_usage() -> dict[str, dict[str, float]]:
@@ -305,9 +406,9 @@ def check_disk_usage() -> dict[str, dict[str, float]]:
         except Exception:
             logger.exception("disk_usage check failed for %s", path)
             continue
-        total_gb = usage.total / (1024 ** 3)
-        used_gb = usage.used / (1024 ** 3)
-        free_gb = usage.free / (1024 ** 3)
+        total_gb = usage.total / (1024**3)
+        used_gb = usage.used / (1024**3)
+        free_gb = usage.free / (1024**3)
         ratio = usage.used / usage.total if usage.total else 0.0
         out[path] = {
             "total_gb": round(total_gb, 2),
@@ -319,16 +420,25 @@ def check_disk_usage() -> dict[str, dict[str, float]]:
             logger.error(
                 "[disk] %s 已用 %.1f%% (%.1f/%.1f GB)，超过 error 阈值 %.0f%%，"
                 "请立即清理（参考 docs/dev-notes/20260717-disk-full-redis-write-error.md）",
-                path, ratio * 100, used_gb, total_gb, _DISK_ERROR_RATIO * 100,
+                path,
+                ratio * 100,
+                used_gb,
+                total_gb,
+                _DISK_ERROR_RATIO * 100,
             )
         elif ratio >= _DISK_WARN_RATIO:
             logger.warning(
-                "[disk] %s 已用 %.1f%% (%.1f/%.1f GB)，超过 warn 阈值 %.0f%%，"
-                "建议尽快清理",
-                path, ratio * 100, used_gb, total_gb, _DISK_WARN_RATIO * 100,
+                "[disk] %s 已用 %.1f%% (%.1f/%.1f GB)，超过 warn 阈值 %.0f%%，" "建议尽快清理",
+                path,
+                ratio * 100,
+                used_gb,
+                total_gb,
+                _DISK_WARN_RATIO * 100,
             )
         else:
-            logger.debug("[disk] %s 已用 %.1f%% (%.1f/%.1f GB)", path, ratio * 100, used_gb, total_gb)
+            logger.debug(
+                "[disk] %s 已用 %.1f%% (%.1f/%.1f GB)", path, ratio * 100, used_gb, total_gb
+            )
     return out
 
 
@@ -459,9 +569,7 @@ def run_a_share_adj_factor_backfill():
     lock_name = "a_share_adj_factor_backfill"
     with redis_lock(lock_name, expire_seconds=14400) as acquired:
         if not acquired:
-            print(
-                "⚠️ [SCHEDULER_WARN] A-share adj_factor backfill skipped: lock in use"
-            )
+            print("⚠️ [SCHEDULER_WARN] A-share adj_factor backfill skipped: lock in use")
             return
 
         with SessionLocal() as db:
@@ -541,7 +649,9 @@ def run_us_indicator_calculation(target_date: date | None = None):
     # Wait for US pipeline lock to be released
     with redis_lock("us_daily_pipeline", expire_seconds=3600, wait_timeout=1800) as acquired:
         if not acquired:
-            print("⚠️ [SCHEDULER_WARN] US indicator calculation skipped: could not acquire pipeline lock")
+            print(
+                "⚠️ [SCHEDULER_WARN] US indicator calculation skipped: could not acquire pipeline lock"
+            )
             return
 
         calculate_indicators.delay(
@@ -592,8 +702,7 @@ def run_indicator_calculation(target_date: date | None = None, full_history: boo
         effective_date = _resolve_a_share_target_date(target_date, db)
         if effective_date is None:
             print(
-                "⚠️ [SCHEDULER_WARN] A-share indicator calculation skipped: "
-                "no A-share bars found"
+                "⚠️ [SCHEDULER_WARN] A-share indicator calculation skipped: " "no A-share bars found"
             )
             return
 
@@ -601,7 +710,9 @@ def run_indicator_calculation(target_date: date | None = None, full_history: boo
     # indicators while bars are still being written.
     with redis_lock(_LOCK_DAILY_PIPELINE, expire_seconds=3600, wait_timeout=1800) as acquired:
         if not acquired:
-            print("⚠️ [SCHEDULER_WARN] Indicator calculation skipped: could not acquire pipeline lock")
+            print(
+                "⚠️ [SCHEDULER_WARN] Indicator calculation skipped: could not acquire pipeline lock"
+            )
             return
 
         # Avoid duplicate dispatch for the same date (08:00 main run vs 17:00 fallback).
@@ -652,10 +763,7 @@ def run_a_share_indicator_fallback(target_date: date | None = None):
     with SessionLocal() as db:
         effective_date = _resolve_a_share_target_date(target_date, db)
         if effective_date is None:
-            print(
-                "⚠️ [SCHEDULER_WARN] A-share indicator fallback skipped: "
-                "no A-share bars found"
-            )
+            print("⚠️ [SCHEDULER_WARN] A-share indicator fallback skipped: " "no A-share bars found")
             return
 
     # Wait for the daily ETL lock to be released (covers any
@@ -682,24 +790,217 @@ def run_a_share_indicator_fallback(target_date: date | None = None):
             market_filter="A股",
         )
         print(
-            f"[Scheduler] A-share indicator fallback task submitted "
-            f"(target={effective_date})"
+            f"[Scheduler] A-share indicator fallback task submitted " f"(target={effective_date})"
         )
 
 
-def run_score_calculation(target_date: date | None = None):
+# ── Indicator completion gate (P0-1, 2026-10-25) ─────────────────────────────
+#
+# docs/dev-notes/20261025-backend-health-survey.md P0-1：08:00 指标任务经
+# ``calculate_indicators.delay(...)`` 投递后，with 块结束即释放
+# ``daily_pipeline`` 锁，但任务本身在 Celery 里还要跑 4-6h（SQL 后端逐
+# chunk 渐进 commit）。评分(08:30)/信号(09:00) 只等锁 → 在半宇宙指标集
+# 上算横截面百分位并落库。修复后下游**不再依赖锁**：先查 Celery 任务
+# 成功尾部写的 Redis 完成标记（``app.tasks.indicator`` 模块），标记
+# ready 再验覆盖率，未 ready 跳过本轮并安排延时重试（跳过必留日志）。
+#
+# 门控只覆盖 A 股链路：08:00 A 股指标任务是唯一小时级的长跑环节；
+# US（05:30 投递、universe 小）与 CRYPTO（08:30、deliberate no-op 期
+# rows=0）都不构成评分日终链的竞态瓶颈。标记 key 按 market 作用域
+# 区分，A股标记不会放行全市场门控（见 ``indicator_done_key``）。
+_INDICATOR_GATE_RETRY_MINUTES = 30
+# 当日重试截止 20:00 (Asia/Shanghai)。与 17:00 A 股指标兜底的衔接：
+# 17:00 ``run_a_share_indicator_fallback`` 会重新投递同日指标任务并在
+# 完成时**覆写**完成标记；本重试链 17:30 / 18:00 / ... 持续探测，因此
+# 兜底完成后同日评分/信号仍能补跑。截止 20:00 给兜底任务（正常 ~1h，
+# 极端 6h 硬限）留出至少一次探测机会；再晚会撞 20:00 申万行业刷新等
+# 晚间批次，无谓占用线程池。注意 job 的 misfire_grace_time=300，20:00
+# 前投递的最后一次重试仍可能在 20:05 前后执行——这是刻意的容差。
+_INDICATOR_GATE_DEADLINE = time(hour=20, minute=0)
+
+
+def check_indicator_completion(market: str, target_date: date) -> tuple[bool, str | None]:
+    """检查某市场某日的指标完成标记是否足以放行横截面计算。
+
+    Returns:
+        ``(ready, reason)``——ready=False 时 reason 说明缺什么（标记缺失 /
+        status 非 success-partial / 覆盖率不足），供调用方写日志。
+    """
+    logger = logging.getLogger(__name__)
+    key = indicator_done_key(market, target_date)
+    try:
+        raw = get_redis_client().get(key)
+    except Exception:
+        logger.exception("[indicator-gate] failed to read completion marker %s", key)
+        return False, f"redis error reading {key}"
+    if raw is None:
+        return False, (
+            f"completion marker missing: {key} "
+            "(indicator task still running, killed before finishing, or marker expired)"
+        )
+    try:
+        payload = json.loads(raw)
+    except (TypeError, ValueError):
+        return False, f"completion marker corrupt: {key}"
+    status = payload.get("status")
+    # partial = 个别标的失败但覆盖率达标（覆盖率检查兜底质量）；
+    # failed / 其他状态一律不放行。
+    if status not in ("success", "partial"):
+        return False, (
+            f"indicator task status={status!r} for {market} {target_date} "
+            f"(error={payload.get('error')})"
+        )
+    try:
+        universe = int(payload.get("universe_count") or 0)
+        rows = int(payload.get("indicator_rows") or 0)
+    except (TypeError, ValueError):
+        return False, f"completion marker has non-numeric counts: {key}"
+    coverage = (rows / universe) if universe > 0 else 1.0
+    if coverage < INDICATOR_MIN_COVERAGE:
+        return False, (
+            f"indicator coverage {rows}/{universe} = {coverage:.1%} < "
+            f"{INDICATOR_MIN_COVERAGE:.0%} for {market} {target_date}"
+        )
+    return True, None
+
+
+def _schedule_indicator_gate_retry(
+    *,
+    job_label: str,
+    target_date: date,
+    attempt: int,
+    retry_fn: Any,
+    now: datetime | None = None,
+) -> bool:
+    """安排一次性 30 分钟后的门控重试；当日 20:00 (Asia/Shanghai) 后放弃。
+
+    Args:
+        job_label: 日志 / job id 维度（score_calculation / signal_generation）。
+        target_date: 被门控的指标日期（进 job id，避免跨日串链）。
+        attempt: 当前尝试序号（仅日志用；重试链每次恰有一个 pending job，
+            job id 按 label+date 固定 + replace_existing，天然防堆叠）。
+        retry_fn: 无参可调用对象（``functools.partial`` 包好的下一次尝试）。
+        now: 注入当前时间（测试用）；生产取 Asia/Shanghai 当前时刻。
+
+    Returns:
+        True = 已排期；False = 超过当日截止，已 log error 放弃（绝不无痕）。
+    """
+    logger = logging.getLogger(__name__)
+    tz = ZoneInfo("Asia/Shanghai")
+    current = now or datetime.now(tz)
+    if current.tzinfo is None:
+        current = current.replace(tzinfo=tz)
+    else:
+        current = current.astimezone(tz)
+    next_at = current + timedelta(minutes=_INDICATOR_GATE_RETRY_MINUTES)
+    deadline = current.replace(
+        hour=_INDICATOR_GATE_DEADLINE.hour,
+        minute=_INDICATOR_GATE_DEADLINE.minute,
+        second=0,
+        microsecond=0,
+    )
+    if next_at > deadline:
+        logger.error(
+            "[indicator-gate] giving up on %s for %s after %d attempt(s): "
+            "indicator completion not satisfied before %s cutoff; "
+            "no scores/signals will be written today",
+            job_label,
+            target_date,
+            attempt + 1,
+            deadline.isoformat(),
+        )
+        return False
+    job_id = f"indicator_gate_retry:{job_label}:{target_date.isoformat()}"
+    try:
+        # 非 leader worker（scheduler 未 start）上 add_job 只是挂起 pending、
+        # 永不执行——典型场景是运维在 API worker 上手动 run_now 触发被门控
+        # 拦下。这里显式留 warning，避免「已排期」的错觉。
+        if not getattr(scheduler, "running", False):
+            logger.warning(
+                "[indicator-gate] scheduler in this process is not running; "
+                "retry job %s will only fire on the scheduler leader",
+                job_id,
+            )
+        scheduler.add_job(
+            retry_fn,
+            trigger=DateTrigger(run_date=next_at),
+            id=job_id,
+            name=f"指标门控重试 {job_label} {target_date}",
+            replace_existing=True,
+            max_instances=1,
+            coalesce=True,
+        )
+        logger.warning(
+            "[indicator-gate] %s deferred; one-shot retry #%d scheduled at %s " "(job_id=%s)",
+            job_label,
+            attempt + 1,
+            next_at.isoformat(),
+            job_id,
+        )
+        return True
+    except Exception:
+        # 非_leader worker 上 scheduler 未 start 时 add_job 只是挂起，
+        # 不应抛错；真正异常（序列化 / jobstore）在这里兜底并留痕。
+        logger.exception(
+            "[indicator-gate] failed to schedule retry for %s %s", job_label, target_date
+        )
+        return False
+
+
+def run_score_calculation(target_date: date | None = None, attempt: int = 0):
     """Run the daily ETF composite score calculation for all templates.
 
     ETLLog 由 :func:`_run_score_calculation_locked` 上的 ``@record_etl``
     记录（job_name="score_calculation"，与 scheduler job id 及运维面板
     ``_TRACKED_JOBS`` 对齐）。
 
+    2026-10-25（P0-1）：调度路径（``target_date=None``）先过 A 股指标完成
+    标记门控（见 ``check_indicator_completion``）——标记未 ready（缺失 /
+    failed / 覆盖率 <95%）→ log warning 并跳过本轮，安排 30 分钟延时
+    重试（当日 20:00 截止，见 ``_schedule_indicator_gate_retry``）。显式
+    ``target_date``（回填脚本 / 运维补历史）不过门控：历史日期的指标集
+    早已定型，而 Redis 标记只保留 8 天，门控只会误伤回填。``attempt``
+    是重试链内部计数，外部调用无需传。
+
     Args:
         target_date: If provided, calculate scores for this date.
+        attempt: Internal retry-chain counter (do not pass manually).
     """
+    logger = logging.getLogger(__name__)
+    gated_date: date | None = None
+    if target_date is None:
+        with SessionLocal() as db:
+            gated_date = _resolve_a_share_target_date(None, db)
+        if gated_date is None:
+            print("⚠️ [SCHEDULER_WARN] Score calculation skipped: no A-share bars found")
+            return
+        ready, reason = check_indicator_completion("A股", gated_date)
+        if not ready:
+            logger.warning(
+                "[indicator-gate] Score calculation deferred (attempt %d): %s",
+                attempt,
+                reason,
+            )
+            _schedule_indicator_gate_retry(
+                job_label="score_calculation",
+                target_date=gated_date,
+                attempt=attempt,
+                retry_fn=partial(run_score_calculation, None, attempt + 1),
+            )
+            return
+
     with redis_lock(_LOCK_DAILY_PIPELINE, expire_seconds=1800, wait_timeout=1800) as acquired:
         if not acquired:
             print("⚠️ [SCHEDULER_WARN] Score calculation skipped: could not acquire pipeline lock")
+            if gated_date is not None:
+                # 门控已过、但 daily_pipeline 锁被（大概率仍在运行的信号
+                # 生成）长期持有——同样走 30 分钟重试链，20:00 截止。
+                _schedule_indicator_gate_retry(
+                    job_label="score_calculation",
+                    target_date=gated_date,
+                    attempt=attempt,
+                    retry_fn=partial(run_score_calculation, None, attempt + 1),
+                )
             return
         return _run_score_calculation_locked(target_date)
 
@@ -715,7 +1016,9 @@ def _run_score_calculation_locked(target_date: date | None = None) -> dict[str, 
         service = ScoringService(db)
         results = service.calculate_daily_scores(trade_date=target_date)
         total = sum(results.values())
-        print(f"[Scheduler] Score calculation (target={target_date}): {total} scores across {len(results)} templates")
+        print(
+            f"[Scheduler] Score calculation (target={target_date}): {total} scores across {len(results)} templates"
+        )
         return {
             "written": total,
             "per_series": {str(tid): count for tid, count in results.items()},
@@ -754,10 +1057,7 @@ def run_weekly_pool_reports():
         # unfiltered query kept generating orphan reports for deleted pools).
         with SessionLocal() as db:
             pool_ids = [
-                p.id
-                for p in db.query(ETFPools)
-                .filter(ETFPools.deleted_at.is_(None))
-                .all()
+                p.id for p in db.query(ETFPools).filter(ETFPools.deleted_at.is_(None)).all()
             ]
 
         for pool_id in pool_ids:
@@ -769,11 +1069,11 @@ def run_weekly_pool_reports():
                         report_type="pool_weekly",
                         format="html",
                     )
-                print(
-                    f"[Scheduler] Weekly report for pool {pool_id}: {metadata.status}"
-                )
+                print(f"[Scheduler] Weekly report for pool {pool_id}: {metadata.status}")
             except Exception as e:
-                print(f"[Scheduler] Failed to generate report for pool {pool_id}: {e}")
+                # P1-3：与调度循环同款可观测性——warning + 失败计数器
+                # （原先仅 print，docker logs 检索无级别、无聚合维度）。
+                _record_loop_failure("weekly_pool_reports", f"pool:{pool_id}", e)
 
 
 def run_daily_digest(target_date: date | None = None):
@@ -819,9 +1119,7 @@ def _run_daily_digest_locked(target_date: date | None = None) -> dict[str, Any]:
                 if s.get("status") == "failed"
             ]
         except Exception as exc:
-            logging.getLogger(__name__).exception(
-                "Daily digest generation failed: %s", exc
-            )
+            logging.getLogger(__name__).exception("Daily digest generation failed: %s", exc)
             return {"written": 0, "error": str(exc)[:500]}
 
     result: dict[str, Any] = {"written": 1}
@@ -899,7 +1197,11 @@ def run_etf_scan():
         with SessionLocal() as db:
             service = ETFScannerService(db)
             result = service.scan_market()
-            total = len(result.get("new", [])) + len(result.get("delisted", [])) + len(result.get("changed", []))
+            total = (
+                len(result.get("new", []))
+                + len(result.get("delisted", []))
+                + len(result.get("changed", []))
+            )
             print(f"[Scheduler] ETF scan: {total} changes found")
 
 
@@ -937,8 +1239,7 @@ def run_etf_holdings():
             pipeline = ETFHoldingsPipeline(db)
             result = pipeline.run_with_retry(max_attempts=2)
             print(
-                f"[Scheduler] ETF holdings: "
-                f"success={result.success}, records={result.records}"
+                f"[Scheduler] ETF holdings: " f"success={result.success}, records={result.records}"
             )
 
 
@@ -1007,9 +1308,7 @@ def run_crypto_indicator_calculation(target_date: date | None = None):
     Args:
         target_date: If provided, calculate indicators up to this date.
     """
-    with redis_lock(
-        "crypto_daily_pipeline", expire_seconds=3600, wait_timeout=2100
-    ) as acquired:
+    with redis_lock("crypto_daily_pipeline", expire_seconds=3600, wait_timeout=2100) as acquired:
         if not acquired:
             print(
                 "⚠️ [SCHEDULER_WARN] Crypto indicator calculation skipped: "
@@ -1129,9 +1428,7 @@ def run_market_fund_flow_daily(target_date: date | None = None):
     """
     with redis_lock("market_fund_flow_daily", expire_seconds=3600) as acquired:
         if not acquired:
-            print(
-                "⚠️ [SCHEDULER_WARN] Market fund-flow refresh skipped: lock in use"
-            )
+            print("⚠️ [SCHEDULER_WARN] Market fund-flow refresh skipped: lock in use")
             return
         with SessionLocal() as db:
             pipeline = MarketFundFlowPipeline(db, target_date=target_date)
@@ -1272,9 +1569,7 @@ def run_paper_trade_market_update():
     Fetches latest Binance prices and recalculates unrealized PnL for every
     position with quantity > 0 across all active accounts.
     """
-    with redis_lock(
-        "paper_trade_market_update", expire_seconds=600
-    ) as acquired:
+    with redis_lock("paper_trade_market_update", expire_seconds=600) as acquired:
         if not acquired:
             print("⚠️ [SCHEDULER_WARN] Paper trade market update skipped: lock in use")
             return
@@ -1296,16 +1591,14 @@ def run_paper_trade_auto():
     to be released before executing, ensuring signals are fully generated.
     """
     # Wait for signal generation to complete before trading
-    with redis_lock(
-        _LOCK_DAILY_PIPELINE, expire_seconds=3600, wait_timeout=3600
-    ) as acquired:
+    with redis_lock(_LOCK_DAILY_PIPELINE, expire_seconds=3600, wait_timeout=3600) as acquired:
         if not acquired:
-            print("⚠️ [SCHEDULER_WARN] Paper trade auto skipped: signal generation still running after 1h")
+            print(
+                "⚠️ [SCHEDULER_WARN] Paper trade auto skipped: signal generation still running after 1h"
+            )
             return
 
-    with redis_lock(
-        "paper_trade_auto", expire_seconds=1800, wait_timeout=600
-    ) as acquired:
+    with redis_lock("paper_trade_auto", expire_seconds=1800, wait_timeout=600) as acquired:
         if not acquired:
             print("⚠️ [SCHEDULER_WARN] Paper trade auto skipped: lock in use")
             return
@@ -1324,7 +1617,11 @@ def run_paper_trade_auto():
                     service = PaperTradingService(db)
                     orders = service.auto_trade_from_signals(account_id)
                     total_orders += len(orders)
-            except Exception:
+            except Exception as exc:
+                # P1-3（20261025 survey）：原先 ``except Exception: continue``
+                # 零日志零计数——单账户失败（行情超时 / 配额 / 下架币）完全
+                # 不可观测。改为 warning 日志 + 带日期的 Redis 失败计数器。
+                _record_loop_failure("paper_trade_auto", f"account:{account_id}", exc)
                 continue
         print(
             f"[Scheduler] Paper trade auto: {total_orders} orders "
@@ -1332,25 +1629,50 @@ def run_paper_trade_auto():
         )
 
 
-def run_signal_generation(target_date: date | None = None):
+def run_signal_generation(target_date: date | None = None, attempt: int = 0):
     """Generate trading signals for all active strategies (daily 09:00).
 
     ETLLog 由 :func:`_run_signal_generation_locked` 上的 ``@record_etl``
     记录（job_name="signal_generation"，与 scheduler job id 及运维面板
     ``_TRACKED_JOBS`` 对齐）。
 
+    2026-10-25（P0-1）：调度路径（``target_date=None``）先过 A 股指标
+    完成标记门控（同 :func:`run_score_calculation`）——信号逐标的读最新
+    指标，同样绝不能在未完成的指标集上生成。未 ready → log warning +
+    跳过 + 30 分钟延时重试（当日 20:00 截止）。显式 ``target_date`` 为
+    回填语义，不过门控。``attempt`` 是重试链内部计数。
+
     Args:
         target_date: If provided, generate signals for this date instead of today.
+        attempt: Internal retry-chain counter (do not pass manually).
     """
+    logger = logging.getLogger(__name__)
+    if target_date is None:
+        with SessionLocal() as db:
+            gated_date = _resolve_a_share_target_date(None, db)
+        if gated_date is None:
+            print("⚠️ [SCHEDULER_WARN] Signal generation skipped: no A-share bars found")
+            return
+        ready, reason = check_indicator_completion("A股", gated_date)
+        if not ready:
+            logger.warning(
+                "[indicator-gate] Signal generation deferred (attempt %d): %s",
+                attempt,
+                reason,
+            )
+            _schedule_indicator_gate_retry(
+                job_label="signal_generation",
+                target_date=gated_date,
+                attempt=attempt,
+                retry_fn=partial(run_signal_generation, None, attempt + 1),
+            )
+            return
+
     # Short-lived session: only read config and the instrument universe.
     with SessionLocal() as db:
         # Query active strategy configs directly (bypass StrategyService which
         # requires user_id scoping — the scheduler operates system-wide).
-        active_configs = (
-            db.query(StrategyConfig)
-            .filter(StrategyConfig.is_active.is_(True))
-            .all()
-        )
+        active_configs = db.query(StrategyConfig).filter(StrategyConfig.is_active.is_(True)).all()
         active_strategies = [
             {
                 "id": s.id,
@@ -1365,7 +1687,9 @@ def run_signal_generation(target_date: date | None = None):
 
     expire_seconds = max(1800, min(14400, len(active_strategies) * len(etfs) * 2))
 
-    with redis_lock(_LOCK_DAILY_PIPELINE, expire_seconds=expire_seconds, wait_timeout=1800) as acquired:
+    with redis_lock(
+        _LOCK_DAILY_PIPELINE, expire_seconds=expire_seconds, wait_timeout=1800
+    ) as acquired:
         if not acquired:
             print("⚠️ [SCHEDULER_WARN] Signal generation skipped: could not acquire pipeline lock")
             return
@@ -1431,15 +1755,20 @@ def _run_signal_generation_locked(
                             )
                             total_signals += len(signals)
                         except Exception as e:
-                            print(f"[Scheduler] Signal generation failed for {etf.code}: {e}")
+                            # P1-3：单标的失败不中断整轮（failed_items 仍记
+                            # partial），但额外 warning + 失败计数器，杜绝
+                            # 「数百标的静默失败零可观测」。
+                            _record_loop_failure("signal_generation", f"etf:{etf.code}", e)
                             if len(failed_items) < 50:
                                 failed_items.append(f"etf:{etf.code}")
             except Exception as e:
-                print(f"[Scheduler] Signal generation failed for strategy {strategy_id}: {e}")
+                _record_loop_failure("signal_generation", f"strategy:{strategy_id}", e)
                 if len(failed_items) < 50:
                     failed_items.append(f"strategy:{strategy_id}")
 
-        print(f"[Scheduler] Signal generation (target={target_date}): {total_signals} signals generated")
+        print(
+            f"[Scheduler] Signal generation (target={target_date}): {total_signals} signals generated"
+        )
         result: dict[str, Any] = {"written": total_signals}
         if failed_items:
             result["failed"] = failed_items
@@ -1500,9 +1829,7 @@ def init_scheduler():
         if cleaned:
             print(f"[Scheduler] Cleaned up {cleaned} stuck ETL job(s) on startup")
     except Exception:
-        logging.getLogger(__name__).exception(
-            "Startup stuck-ETL cleanup failed; continuing anyway"
-        )
+        logging.getLogger(__name__).exception("Startup stuck-ETL cleanup failed; continuing anyway")
     scheduler.add_job(
         run_us_etl,
         trigger=CronTrigger(hour=5, minute=0, timezone="Asia/Shanghai"),
@@ -1691,9 +2018,7 @@ def init_scheduler():
     # ── Macro Jobs ──
     scheduler.add_job(
         run_china_macro_refresh,
-        trigger=CronTrigger(
-            hour=9, minute=30, day_of_week="mon-fri", timezone="Asia/Shanghai"
-        ),
+        trigger=CronTrigger(hour=9, minute=30, day_of_week="mon-fri", timezone="Asia/Shanghai"),
         id="china_macro_daily",
         name="中国宏观日刷",
         replace_existing=True,
@@ -1709,9 +2034,7 @@ def init_scheduler():
     # close repeated.
     scheduler.add_job(
         run_global_indices_refresh,
-        trigger=CronTrigger(
-            hour=17, minute=0, day_of_week="mon-fri", timezone="Asia/Shanghai"
-        ),
+        trigger=CronTrigger(hour=17, minute=0, day_of_week="mon-fri", timezone="Asia/Shanghai"),
         id="global_indices_daily",
         name="全球主要指数日刷",
         replace_existing=True,
@@ -1728,9 +2051,7 @@ def init_scheduler():
     )
     scheduler.add_job(
         run_futures_contract_refresh,
-        trigger=CronTrigger(
-            day=1, hour=3, minute=0, timezone="Asia/Shanghai"
-        ),
+        trigger=CronTrigger(day=1, hour=3, minute=0, timezone="Asia/Shanghai"),
         id="futures_contracts_refresh",
         name="国内期货主力合约刷新",
         replace_existing=True,
@@ -1807,9 +2128,7 @@ def init_scheduler():
     # older ex-dividend events are correctly reflected.
     scheduler.add_job(
         run_a_share_adj_factor_backfill,
-        trigger=CronTrigger(
-            day_of_week="sun", hour=3, minute=30, timezone="Asia/Shanghai"
-        ),
+        trigger=CronTrigger(day_of_week="sun", hour=3, minute=30, timezone="Asia/Shanghai"),
         id="a_share_adj_factor_backfill",
         name="A股复权因子全历史回填",
         replace_existing=True,
@@ -1849,9 +2168,7 @@ def init_scheduler():
         # day_of_week='mon-fri' — FRED doesn't publish on weekends.
         scheduler.add_job(
             _fred_wrapper,
-            trigger=CronTrigger(
-                hour=3, minute=0, day_of_week="mon-fri", timezone="Asia/Shanghai"
-            ),
+            trigger=CronTrigger(hour=3, minute=0, day_of_week="mon-fri", timezone="Asia/Shanghai"),
             id="fred_macro_daily",
             name="FRED 美国宏观日刷",
             replace_existing=True,
@@ -1894,6 +2211,7 @@ def init_scheduler():
             run_yahoo_crawl,
             run_zerohedge_crawl,
         )
+
         scheduler.add_job(
             run_cninfo_crawl,
             trigger=IntervalTrigger(minutes=10),
@@ -2154,6 +2472,7 @@ def init_scheduler():
     # Xueqiu (every 5 minutes; needs XUEQIU_COOKIE env)
     try:
         from app.services.news.scheduler_xueqiu_sync import run_xueqiu_crawl_sync
+
         scheduler.add_job(
             run_xueqiu_crawl_sync,
             trigger=IntervalTrigger(minutes=5),
@@ -2169,6 +2488,7 @@ def init_scheduler():
     # News full content fetcher (runs after xueqiu crawler, every 10 minutes)
     try:
         from app.services.news.scheduler_fetch_full_content import run_fetch_full_content
+
         scheduler.add_job(
             run_fetch_full_content,
             trigger=IntervalTrigger(minutes=10),
@@ -2436,6 +2756,7 @@ def init_scheduler():
     # fresh articles inline; this job is the safety net.
     try:
         from app.services.news.scheduler_jobs import run_translate_pending_job
+
         scheduler.add_job(
             run_translate_pending_job,
             trigger=IntervalTrigger(minutes=10),
@@ -2454,6 +2775,7 @@ def init_scheduler():
     # lockstep with ``news_translate_10m``.
     try:
         from app.services.news.scheduler_jobs import run_summarize_pending_job
+
         scheduler.add_job(
             run_summarize_pending_job,
             trigger=IntervalTrigger(minutes=10, jitter=60),
@@ -2473,6 +2795,7 @@ def init_scheduler():
     # own — no manual UPDATE like the 2026-08-02 translation reset.
     try:
         from app.services.news.scheduler_jobs import run_news_attempts_reset_job
+
         scheduler.add_job(
             run_news_attempts_reset_job,
             trigger=CronTrigger(hour=3, minute=45, timezone="Asia/Shanghai"),
@@ -2488,6 +2811,7 @@ def init_scheduler():
     # LLM sentiment pipeline (Agent E)
     try:
         from app.services.news.sentiment.scheduler_sentiment import init_sentiment_jobs
+
         init_sentiment_jobs(scheduler)
     except ImportError:
         pass
@@ -2495,9 +2819,7 @@ def init_scheduler():
     # ── SEC EDGAR (Phase 6) ── weekly Saturday 06:00 UTC
     scheduler.add_job(
         run_sec_edgar_daily,
-        trigger=CronTrigger(
-            day_of_week="sat", hour=6, minute=0, timezone="UTC"
-        ),
+        trigger=CronTrigger(day_of_week="sat", hour=6, minute=0, timezone="UTC"),
         id="sec_edgar_daily",
         name="SEC EDGAR 周报采集",
         replace_existing=True,
@@ -2574,9 +2896,7 @@ def init_scheduler():
     # evening run guarantees same-day publication lands the same night.
     scheduler.add_job(
         run_sw_industry_index_refresh,
-        trigger=CronTrigger(
-            day_of_week="mon-fri", hour=20, minute=0, timezone="Asia/Shanghai"
-        ),
+        trigger=CronTrigger(day_of_week="mon-fri", hour=20, minute=0, timezone="Asia/Shanghai"),
         id="sw_industry_index_refresh",
         name="申万一级行业指数回报刷新 (Phase 3)",
         replace_existing=True,

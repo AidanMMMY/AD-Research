@@ -27,21 +27,39 @@ from app.models.etl import ETLLog
 # 静态 wiring
 # ---------------------------------------------------------------------------
 
+
 def test_lock_map_entries():
     assert sched._ETL_JOB_LOCK_MAP["score_calculation"] == "daily_pipeline"
     assert sched._ETL_JOB_LOCK_MAP["signal_generation"] == "daily_pipeline"
 
 
 def test_run_functions_use_daily_pipeline_lock():
-    """redis_lock 名必须与 _ETL_JOB_LOCK_MAP 一致（stuck 清理据此定位锁）。"""
+    """redis_lock 名必须与 _ETL_JOB_LOCK_MAP 一致（stuck 清理据此定位锁）。
+
+    2026-10-25：改为 AST 判定——原先的源码子串匹配在 black 24 把
+    ``redis_lock(_LOCK_DAILY_PIPELINE, ...)`` 折行后即误报失败；语义
+    不变：run_* 函数体内必须存在第一个位置参数为 ``_LOCK_DAILY_PIPELINE``
+    的 ``redis_lock(...)`` 调用。
+    """
+    import ast
     import inspect
 
-    assert "redis_lock(_LOCK_DAILY_PIPELINE" in inspect.getsource(
-        sched.run_score_calculation
-    )
-    assert "redis_lock(_LOCK_DAILY_PIPELINE" in inspect.getsource(
-        sched.run_signal_generation
-    )
+    def _locks_daily_pipeline(fn) -> bool:
+        tree = ast.parse(inspect.getsource(fn))
+        for node in ast.walk(tree):
+            if (
+                isinstance(node, ast.Call)
+                and isinstance(node.func, ast.Name)
+                and node.func.id == "redis_lock"
+                and node.args
+                and isinstance(node.args[0], ast.Name)
+                and node.args[0].id == "_LOCK_DAILY_PIPELINE"
+            ):
+                return True
+        return False
+
+    assert _locks_daily_pipeline(sched.run_score_calculation)
+    assert _locks_daily_pipeline(sched.run_signal_generation)
     assert sched._LOCK_DAILY_PIPELINE == "daily_pipeline"
 
 
@@ -58,9 +76,9 @@ def test_record_etl_decorator_applied(fn_name, job_id):
     assert fn.__name__ == fn_name
     cells = fn.__closure__ or ()
     values = [c.cell_contents for c in cells]
-    assert job_id in values, (
-        f"@record_etl 未生效或 job_id 不匹配（freevars={fn.__code__.co_freevars}）"
-    )
+    assert (
+        job_id in values
+    ), f"@record_etl 未生效或 job_id 不匹配（freevars={fn.__code__.co_freevars}）"
 
 
 def test_jobs_registered_with_matching_ids(monkeypatch):
@@ -70,8 +88,16 @@ def test_jobs_registered_with_matching_ids(monkeypatch):
         def __init__(self):
             self.jobs: dict[str, dict] = {}
 
-        def add_job(self, func, trigger=None, id=None, name=None,
-                    replace_existing=False, max_instances=None, **kwargs):
+        def add_job(
+            self,
+            func,
+            trigger=None,
+            id=None,
+            name=None,
+            replace_existing=False,
+            max_instances=None,
+            **kwargs,
+        ):
             self.jobs[id] = {"func": func}
 
         def start(self):
@@ -92,6 +118,7 @@ def test_jobs_registered_with_matching_ids(monkeypatch):
 # ---------------------------------------------------------------------------
 # 功能级：锁内函数落 ETLLog
 # ---------------------------------------------------------------------------
+
 
 @pytest.fixture
 def etl_db(db_session, monkeypatch):
@@ -123,11 +150,7 @@ def test_score_calculation_writes_etl_log(etl_db, monkeypatch):
     result = sched._run_score_calculation_locked(target_date=date(2024, 8, 1))
     assert result["written"] == 10
 
-    row = (
-        etl_db.query(ETLLog)
-        .filter(ETLLog.job_name == "score_calculation")
-        .one()
-    )
+    row = etl_db.query(ETLLog).filter(ETLLog.job_name == "score_calculation").one()
     assert row.status == "success"
     assert row.records_count == 10
     assert row.end_time is not None
@@ -146,23 +169,18 @@ def test_signal_generation_writes_etl_log(etl_db, monkeypatch):
     strategies = [{"id": 1, "strategy_type": "unknown_type", "params": {}}]
     etfs = [SimpleNamespace(code="510300.SH"), SimpleNamespace(code="159915.SZ")]
 
-    result = sched._run_signal_generation_locked(
-        strategies, etfs, target_date=date(2024, 8, 1)
-    )
+    result = sched._run_signal_generation_locked(strategies, etfs, target_date=date(2024, 8, 1))
     assert result["written"] == 2
     assert "failed" not in result
 
-    row = (
-        etl_db.query(ETLLog)
-        .filter(ETLLog.job_name == "signal_generation")
-        .one()
-    )
+    row = etl_db.query(ETLLog).filter(ETLLog.job_name == "signal_generation").one()
     assert row.status == "success"
     assert row.records_count == 2
 
 
 def test_signal_generation_partial_failure_recorded(etl_db, monkeypatch):
     """单标的失败不炸整轮，ETLLog 记 partial 且 failed 列表落 extra_data。"""
+
     class _FakeSignalService:
         def __init__(self, db):
             pass
@@ -177,17 +195,11 @@ def test_signal_generation_partial_failure_recorded(etl_db, monkeypatch):
     strategies = [{"id": 1, "strategy_type": "unknown_type", "params": {}}]
     etfs = [SimpleNamespace(code="OK1"), SimpleNamespace(code="BAD")]
 
-    result = sched._run_signal_generation_locked(
-        strategies, etfs, target_date=date(2024, 8, 1)
-    )
+    result = sched._run_signal_generation_locked(strategies, etfs, target_date=date(2024, 8, 1))
     assert result["written"] == 1
     assert result["failed"] == ["etf:BAD"]
 
-    row = (
-        etl_db.query(ETLLog)
-        .filter(ETLLog.job_name == "signal_generation")
-        .one()
-    )
+    row = etl_db.query(ETLLog).filter(ETLLog.job_name == "signal_generation").one()
     assert row.status == "partial"
     assert row.records_count == 1
     assert (row.extra_data or {}).get("failed") == ["etf:BAD"]
