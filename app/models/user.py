@@ -1,6 +1,6 @@
 """User account model."""
 
-from sqlalchemy import Boolean, Column, DateTime, Integer, String, func
+from sqlalchemy import Boolean, Column, DateTime, Integer, String, false, func
 
 from app.core.database import Base
 
@@ -15,6 +15,15 @@ class User(Base):
     password_hash = Column(String(255), nullable=False, comment="Bcrypt password hash")
     role = Column(String(20), nullable=False, default="user", comment="User role")
     is_active = Column(Boolean, default=True, nullable=False, comment="Is active")
+    # True ⇒ the user must set a new password on next login (set when an
+    # admin creates the account or resets its password; cleared by
+    # POST /auth/change-password). server_default keeps existing rows False.
+    must_change_password = Column(
+        Boolean,
+        nullable=False,
+        server_default=false(),
+        comment="Must change password on next login",
+    )
     created_at = Column(
         DateTime(timezone=True),
         server_default=func.now(),

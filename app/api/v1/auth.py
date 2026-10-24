@@ -21,7 +21,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 from jose import jwt
 from sqlalchemy.orm import Session
 
-from app.api.deps import get_current_user
+from app.api.deps import get_current_user, get_current_user_allow_password_change
 from app.config import auth_settings
 from app.core.audit import client_ip_from_headers
 from app.core.database import SessionLocal
@@ -32,6 +32,8 @@ from app.models.refresh_token import RefreshToken
 from app.models.user import User
 from app.models.user_device import UserDevice
 from app.schemas.auth import (
+    ChangePasswordRequest,
+    ChangePasswordResponse,
     DeviceResponse,
     LoginRequest,
     LoginResponse,
@@ -40,6 +42,7 @@ from app.schemas.auth import (
     RegisterDeviceRequest,
     UserResponse,
 )
+from app.services.password_policy import validate_password
 
 logger = logging.getLogger(__name__)
 
@@ -53,6 +56,7 @@ REFRESH_TOKEN_DAYS = 30
 
 # ── DB helper ──
 
+
 def _get_db() -> Generator[Session, None, None]:
     db = SessionLocal()
     try:
@@ -62,6 +66,7 @@ def _get_db() -> Generator[Session, None, None]:
 
 
 # ── Crypto helpers ──
+
 
 def _hash_password(password: str) -> str:
     return bcrypt.hashpw(password.encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
@@ -91,6 +96,7 @@ def _generate_jti() -> str:
 
 # ── Token creation / verification ──
 
+
 def create_access_token(username: str, role: str, jti: str) -> str:
     """Create a short-lived JWT with a unique jti for revocation."""
     now = datetime.now(UTC)
@@ -110,7 +116,26 @@ def _remaining_ttl(exp: int | float) -> int:
     return max(1, int(exp - datetime.now(UTC).timestamp()))
 
 
+def _issue_token_pair(db: Session, user: User) -> tuple[str, str]:
+    """Create an access token and persist a new refresh token.
+
+    The caller owns the transaction/commit so token issuance can be atomic
+    with login bookkeeping or a password change.
+    """
+    access_token = create_access_token(user.username, user.role, _generate_jti())
+    raw_refresh = _generate_refresh_token()
+    db.add(
+        RefreshToken(
+            user_id=user.id,
+            token_hash=_hash_token(raw_refresh),
+            expires_at=datetime.now(UTC) + timedelta(days=REFRESH_TOKEN_DAYS),
+        )
+    )
+    return access_token, raw_refresh
+
+
 # ── Endpoints ──
+
 
 @router.post("/login", response_model=LoginResponse)
 def login(request: LoginRequest, http_request: Request, db: Session = Depends(_get_db)):
@@ -150,32 +175,96 @@ def login(request: LoginRequest, http_request: Request, db: Session = Depends(_g
     clear_login_attempts(user.username)
 
     # Generate tokens
-    jti = _generate_jti()
-    access_token = create_access_token(user.username, user.role, jti)
-
-    raw_refresh = _generate_refresh_token()
-    refresh_hash = _hash_token(raw_refresh)
-
-    db.add(
-        RefreshToken(
-            user_id=user.id,
-            token_hash=refresh_hash,
-            expires_at=datetime.now(UTC) + timedelta(days=REFRESH_TOKEN_DAYS),
-        )
-    )
+    access_token, raw_refresh = _issue_token_pair(db, user)
     db.commit()
 
     return LoginResponse(
         access_token=access_token,
         refresh_token=raw_refresh,
-        user=UserResponse(id=user.id, username=user.username, role=user.role),
+        user=UserResponse(
+            id=user.id,
+            username=user.username,
+            role=user.role,
+            must_change_password=user.must_change_password,
+        ),
     )
 
 
 @router.get("/me", response_model=UserResponse)
-def me(current_user: UserResponse = Depends(get_current_user)):
+def me(current_user: UserResponse = Depends(get_current_user_allow_password_change)):
     """Return the current authenticated user."""
     return current_user
+
+
+@router.post("/change-password", response_model=ChangePasswordResponse)
+def change_password(
+    request: ChangePasswordRequest,
+    http_request: Request,
+    current_user: UserResponse = Depends(get_current_user_allow_password_change),
+    db: Session = Depends(_get_db),
+):
+    """Change the current user's own password and rotate the session.
+
+    Verifies the old password, enforces the shared password policy and
+    clears ``must_change_password``. Every existing refresh token is
+    revoked, then a fresh access/refresh pair is returned so the current
+    session stays signed in while other devices must log in again.
+    """
+    client_ip = client_ip_from_headers(dict(http_request.headers)) or (
+        http_request.client.host if http_request.client else None
+    )
+    allowed, retry_after = check_login_rate_limit(client_ip, current_user.username)
+    if not allowed:
+        logger.warning(
+            "Password change rate-limited: %s",
+            sanitize(f"username={current_user.username} ip={client_ip}"),
+        )
+        raise HTTPException(
+            status_code=429,
+            detail="修改密码尝试过于频繁，请稍后重试",
+            headers={"Retry-After": str(retry_after)},
+        )
+
+    user = db.query(User).filter(User.username == current_user.username).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    if not _verify_password(request.old_password, user.password_hash):
+        raise HTTPException(status_code=400, detail="旧密码不正确")
+
+    error = validate_password(request.new_password)
+    if error:
+        raise HTTPException(status_code=422, detail=error)
+
+    if request.new_password == request.old_password:
+        raise HTTPException(status_code=422, detail="新密码不能与旧密码相同")
+
+    user.password_hash = _hash_password(request.new_password)
+    user.must_change_password = False
+
+    # Revoke every existing refresh token, including this session's old
+    # token. Issue a replacement pair below so the current browser does
+    # not get logged out when its short-lived access token expires.
+    (
+        db.query(RefreshToken)
+        .filter(RefreshToken.user_id == user.id, RefreshToken.revoked.is_(False))
+        .update({"revoked": True})
+    )
+    access_token, raw_refresh = _issue_token_pair(db, user)
+    db.commit()
+    # A successful change proves control of the old password; do not leave
+    # the user carrying earlier near-limit failures into their next login.
+    clear_login_attempts(user.username)
+
+    logger.info(
+        "User changed own password: %s",
+        sanitize(f"user_id={user.id} username={user.username}"),
+    )
+    return ChangePasswordResponse(
+        detail="密码修改成功",
+        access_token=access_token,
+        refresh_token=raw_refresh,
+    )
 
 
 @router.post("/refresh", response_model=RefreshResponse)
@@ -245,7 +334,7 @@ def refresh(request: RefreshRequest, db: Session = Depends(_get_db)):
 
 @router.post("/logout")
 def logout(
-    current_user: UserResponse = Depends(get_current_user),
+    current_user: UserResponse = Depends(get_current_user_allow_password_change),
 ):
     """Logout: blacklist the current access token's jti in Redis.
 
@@ -262,6 +351,7 @@ def logout(
 
 
 # ── Device management ──
+
 
 @router.post("/devices", response_model=DeviceResponse, status_code=201)
 def register_device(

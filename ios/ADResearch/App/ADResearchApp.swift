@@ -7,7 +7,10 @@ struct ADResearchApp: App {
     var body: some Scene {
         WindowGroup {
             Group {
-                if authManager.isAuthenticated {
+                if authManager.requiresPasswordChange {
+                    ChangePasswordView()
+                        .preferredColorScheme(.dark)
+                } else if authManager.isAuthenticated {
                     // Placeholder — will be MainTabView
                     Text("Authenticated")
                         .foregroundColor(.textPrimary)

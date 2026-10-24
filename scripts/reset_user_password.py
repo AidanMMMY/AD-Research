@@ -8,7 +8,7 @@ Usage:
     python scripts/reset_user_password.py admin Aidan
 
     # Non-interactive
-    python scripts/reset_user_password.py admin Aidan --password 'new-secret'
+    python scripts/reset_user_password.py admin Aidan --password 'N3w-passw0rd123'
 """
 
 import argparse
@@ -27,7 +27,9 @@ sys.path.insert(0, str(_PROJECT_ROOT))
 sys.path.insert(0, "/app")  # Docker convention
 
 from app.core.database import SessionLocal
+from app.models.refresh_token import RefreshToken
 from app.models.user import User
+from app.services.password_policy import validate_password
 
 
 def _hash_password(password: str) -> str:
@@ -35,12 +37,28 @@ def _hash_password(password: str) -> str:
 
 
 def reset_password(db: Session, username: str, password: str) -> bool:
-    """Reset password for the given username. Returns True on success."""
+    """Reset password for the given username. Returns True on success.
+
+    Raises:
+        ValueError: If the password violates the shared password policy.
+    """
+    error = validate_password(password)
+    if error:
+        raise ValueError(error)
+
     user = db.query(User).filter(User.username == username).first()
     if user is None:
         print(f"  ❌ User '{username}' does not exist. Aborting.")
         return False
     user.password_hash = _hash_password(password)
+    user.must_change_password = True
+    # Password resets invalidate all long-lived sessions. Existing access
+    # tokens keep their pre-existing 15-minute JWT lifetime semantics.
+    (
+        db.query(RefreshToken)
+        .filter(RefreshToken.user_id == user.id, RefreshToken.revoked.is_(False))
+        .update({"revoked": True})
+    )
     db.add(user)
     db.commit()
     print(f"  ✅ Reset password for '{username}' (role={user.role}, active={user.is_active})")
@@ -57,7 +75,7 @@ def main() -> int:
     parser.add_argument(
         "--password",
         help="Non-interactive mode: use this password for ALL given users. "
-             "If omitted, prompts interactively per user.",
+        "If omitted, prompts interactively per user.",
     )
     args = parser.parse_args()
 
@@ -65,8 +83,7 @@ def main() -> int:
     try:
         # Verify all usernames exist before touching anything
         existing = {
-            u.username
-            for u in db.query(User).filter(User.username.in_(args.usernames)).all()
+            u.username for u in db.query(User).filter(User.username.in_(args.usernames)).all()
         }
         missing = set(args.usernames) - existing
         if missing:
@@ -75,10 +92,13 @@ def main() -> int:
             return 2
 
         if args.password:
-            # Non-interactive: same password for everyone
+            # Non-interactive: same password for everyone. Reject a weak
+            # password before changing any account instead of only warning.
             pw = args.password
-            if len(pw) < 8:
-                print("⚠️  Password is shorter than 8 chars. Continuing anyway.")
+            error = validate_password(pw)
+            if error:
+                print(f"Error: {error}", file=sys.stderr)
+                return 1
             for username in args.usernames:
                 reset_password(db, username, pw)
         else:
@@ -92,6 +112,10 @@ def main() -> int:
                     confirm = getpass.getpass(f"Confirm password for '{username}': ")
                     if pw != confirm:
                         print("  ❌ Passwords do not match; try again.")
+                        continue
+                    error = validate_password(pw)
+                    if error:
+                        print(f"  {error}")
                         continue
                     break
                 reset_password(db, username, pw)

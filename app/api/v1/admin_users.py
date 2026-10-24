@@ -9,14 +9,17 @@ from sqlalchemy.orm import Session
 from app.api.deps import assert_would_keep_at_least_one_admin, get_db, require_admin
 from app.core.audit import client_ip_from_headers, record_audit
 from app.core.log_sanitize import sanitize
+from app.models.refresh_token import RefreshToken
 from app.models.user import User
 from app.schemas.auth import UserResponse
 from app.schemas.user import (
     PasswordResetRequest,
     UserAdminResponse,
     UserCreateRequest,
+    UserCreateResponse,
     UserUpdateRequest,
 )
+from app.services.password_policy import generate_random_password, validate_password
 
 logger = logging.getLogger(__name__)
 
@@ -26,6 +29,30 @@ router = APIRouter()
 def _hash_password(password: str) -> str:
     """Hash a plaintext password with bcrypt."""
     return bcrypt.hashpw(password.encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
+
+
+def _resolve_initial_password(raw: str | None) -> str:
+    """Validate an explicit password or generate a random one.
+
+    Returns the plaintext to be hashed and echoed once in the response.
+    Raises 422 with a Chinese detail when the explicit password violates
+    the shared policy (see app.services.password_policy).
+    """
+    if raw is None or raw == "":
+        return generate_random_password()
+    error = validate_password(raw)
+    if error:
+        raise HTTPException(status_code=422, detail=error)
+    return raw
+
+
+def _revoke_all_refresh_tokens(db: Session, user_id: int) -> None:
+    """Revoke every active refresh token of a user (password changed)."""
+    (
+        db.query(RefreshToken)
+        .filter(RefreshToken.user_id == user_id, RefreshToken.revoked.is_(False))
+        .update({"revoked": True})
+    )
 
 
 @router.get("", response_model=list[UserAdminResponse])
@@ -38,23 +65,32 @@ def list_users(
     return users
 
 
-@router.post("", response_model=UserAdminResponse, status_code=201)
+@router.post("", response_model=UserCreateResponse, status_code=201)
 def create_user(
     data: UserCreateRequest,
     request: Request,
     db: Session = Depends(get_db),
     actor: UserResponse = Depends(require_admin),
 ):
-    """Create a new user (admin only)."""
+    """Create a new user (admin only).
+
+    Password is optional: when omitted a random one is generated. Either
+    way the user is flagged ``must_change_password=True`` so the first
+    login forces a password change. The plaintext initial password is
+    returned once in ``initial_password`` and never stored or logged.
+    """
     existing = db.query(User).filter(User.username == data.username).first()
     if existing:
         raise HTTPException(status_code=409, detail="Username already exists")
 
+    initial_password = _resolve_initial_password(data.password)
+
     user = User(
         username=data.username,
-        password_hash=_hash_password(data.password),
+        password_hash=_hash_password(initial_password),
         role=data.role,
         is_active=data.is_active,
+        must_change_password=True,
     )
     db.add(user)
     db.commit()
@@ -63,7 +99,10 @@ def create_user(
     logger.info(
         "Admin %s created user: %s",
         sanitize(actor.username),
-        sanitize(f"username={user.username} role={user.role}"),
+        sanitize(
+            f"username={user.username} role={user.role} "
+            f"password_generated={data.password in (None, '')}"
+        ),
     )
 
     record_audit(
@@ -78,7 +117,9 @@ def create_user(
         status_code=201,
         detail=f"Created user '{user.username}'",
     )
-    return user
+    return UserCreateResponse.model_validate(user).model_copy(
+        update={"initial_password": initial_password}
+    )
 
 
 @router.put("/{user_id}", response_model=UserAdminResponse)
@@ -135,12 +176,22 @@ def reset_password(
     db: Session = Depends(get_db),
     actor: UserResponse = Depends(require_admin),
 ):
-    """Reset a user's password (admin only)."""
+    """Reset a user's password (admin only).
+
+    ``new_password`` optional — omitted means a random password is
+    generated. The target user is flagged ``must_change_password=True``
+    and all of their refresh tokens are revoked. The plaintext is
+    returned once in ``initial_password``.
+    """
     user = db.query(User).filter(User.id == user_id).first()
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
 
-    user.password_hash = _hash_password(data.new_password)
+    initial_password = _resolve_initial_password(data.new_password)
+
+    user.password_hash = _hash_password(initial_password)
+    user.must_change_password = True
+    _revoke_all_refresh_tokens(db, user.id)
     db.commit()
 
     logger.info(
@@ -162,7 +213,7 @@ def reset_password(
         status_code=200,
         detail=f"Reset password for user '{user.username}'",
     )
-    return {"message": "Password reset successfully"}
+    return {"message": "Password reset successfully", "initial_password": initial_password}
 
 
 @router.delete("/{user_id}", status_code=204)

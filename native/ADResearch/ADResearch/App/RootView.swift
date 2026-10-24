@@ -9,6 +9,9 @@ struct RootView: View {
         Group {
             if !authStore.hasRestoredSession {
                 launchView
+            } else if authStore.requiresPasswordChange {
+                ChangePasswordView()
+                    .transition(.opacity)
             } else if authStore.isAuthenticated {
                 PlatformShell()
                     .transition(.opacity)
@@ -18,6 +21,7 @@ struct RootView: View {
             }
         }
         .animation(AppTheme.Motion.standard, value: authStore.isAuthenticated)
+        .animation(AppTheme.Motion.standard, value: authStore.requiresPasswordChange)
         .animation(AppTheme.Motion.fade, value: authStore.hasRestoredSession)
         .task {
             await authStore.bootstrapSessionIfNeeded()

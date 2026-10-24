@@ -9,6 +9,7 @@ import {
   Switch,
   Space,
   Tooltip,
+  Typography,
   message,
   Popconfirm,
 } from 'antd';
@@ -26,11 +27,21 @@ import ThemeTag from '@/components/ThemeTag';
 import { useAdminUsers } from '@/hooks/useAdminUsers';
 import { useAuthStore } from '@/stores/auth';
 import type { UserAdminItem } from '@/types/user';
+import { validatePassword } from '@/utils/passwordPolicy';
 
 const ROLE_OPTIONS = [
   { label: '管理员', value: 'admin' },
   { label: '普通用户', value: 'user' },
 ];
+
+/** Blank is allowed: the backend generates a random initial password. */
+const optionalPasswordRule = {
+  validator: (_: unknown, value: string) => {
+    if (!value) return Promise.resolve();
+    const error = validatePassword(value);
+    return error ? Promise.reject(new Error(error)) : Promise.resolve();
+  },
+};
 
 export default function AdminUsers() {
   const { user: currentUser } = useAuthStore();
@@ -38,6 +49,12 @@ export default function AdminUsers() {
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [isResetOpen, setIsResetOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<UserAdminItem | null>(null);
+  // One-time plaintext password returned by create/reset. It only lives
+  // in this modal state and is discarded as soon as the modal closes.
+  const [initialPasswordInfo, setInitialPasswordInfo] = useState<{
+    username: string;
+    password: string;
+  } | null>(null);
   const [createForm] = Form.useForm();
   const [editForm] = Form.useForm();
   const [resetForm] = Form.useForm();
@@ -49,18 +66,32 @@ export default function AdminUsers() {
     update,
     delete: deleteUser,
     resetPassword,
+    resetCreateMutation,
+    resetResetPasswordMutation,
+    isCreating,
+    isResettingPassword,
   } = useAdminUsers();
 
   const isSelf = (record: UserAdminItem) => record.username === currentUser?.username;
 
   const handleCreate = async (values: any) => {
+    if (isCreating) return;
     try {
-      await create({
+      const { data } = await create({
         username: values.username,
-        password: values.password,
+        password: values.password || undefined,
         role: values.role,
         is_active: values.is_active,
       });
+      if (data.initial_password) {
+        setInitialPasswordInfo({
+          username: data.username,
+          password: data.initial_password,
+        });
+      }
+      // The one-time plaintext now has its own local display state; do not
+      // retain the Axios response in TanStack's mutation cache.
+      resetCreateMutation();
       message.success('用户创建成功');
       setIsCreateOpen(false);
       createForm.resetFields();
@@ -98,18 +129,25 @@ export default function AdminUsers() {
   };
 
   const handleResetPassword = async (values: any) => {
-    if (!editingUser) return;
+    if (!editingUser || isResettingPassword) return;
     try {
-      await resetPassword({
+      const { data } = await resetPassword({
         id: editingUser.id,
-        data: { new_password: values.new_password },
+        data: { new_password: values.new_password || undefined },
       });
+      if (data.initial_password) {
+        setInitialPasswordInfo({
+          username: editingUser.username,
+          password: data.initial_password,
+        });
+      }
+      resetResetPasswordMutation();
       message.success('密码重置成功');
       setIsResetOpen(false);
       setEditingUser(null);
       resetForm.resetFields();
-    } catch {
-      message.error('密码重置失败');
+    } catch (err: any) {
+      message.error(err?.response?.data?.detail || '密码重置失败');
     }
   };
 
@@ -241,7 +279,13 @@ export default function AdminUsers() {
       <Modal
         title="新增用户"
         open={isCreateOpen}
+        confirmLoading={isCreating}
+        closable={!isCreating}
+        maskClosable={!isCreating}
+        keyboard={!isCreating}
+        cancelButtonProps={{ disabled: isCreating }}
         onCancel={() => {
+          if (isCreating) return;
           setIsCreateOpen(false);
           createForm.resetFields();
         }}
@@ -264,10 +308,11 @@ export default function AdminUsers() {
           </Form.Item>
           <Form.Item
             name="password"
-            label="密码"
-            rules={[{ required: true, message: '请输入密码' }]}
+            label="初始密码（可选）"
+            rules={[optionalPasswordRule]}
+            extra="至少 12 位，含英文字母和数字；无论是否填写，用户首次登录都需修改"
           >
-            <Input.Password placeholder="初始密码" />
+            <Input.Password placeholder="留空则自动生成" autoComplete="new-password" />
           </Form.Item>
           <Form.Item
             name="role"
@@ -321,7 +366,13 @@ export default function AdminUsers() {
       <Modal
         title={`重置密码 - ${editingUser?.username || ''}`}
         open={isResetOpen}
+        confirmLoading={isResettingPassword}
+        closable={!isResettingPassword}
+        maskClosable={!isResettingPassword}
+        keyboard={!isResettingPassword}
+        cancelButtonProps={{ disabled: isResettingPassword }}
         onCancel={() => {
+          if (isResettingPassword) return;
           setIsResetOpen(false);
           setEditingUser(null);
           resetForm.resetFields();
@@ -333,12 +384,46 @@ export default function AdminUsers() {
         <Form form={resetForm} layout="vertical" onFinish={handleResetPassword}>
           <Form.Item
             name="new_password"
-            label="新密码"
-            rules={[{ required: true, message: '请输入新密码' }]}
+            label="新密码（可选）"
+            rules={[optionalPasswordRule]}
+            extra="至少 12 位，含英文字母和数字；重置后用户下次登录需修改"
           >
-            <Input.Password placeholder="新密码" />
+            <Input.Password placeholder="留空则自动生成" autoComplete="new-password" />
           </Form.Item>
         </Form>
+      </Modal>
+
+      {/* One-time initial password. No "show again" path exists: closing
+          this modal discards the only plaintext copy held by the UI. */}
+      <Modal
+        title="初始密码（仅显示一次）"
+        open={initialPasswordInfo !== null}
+        onCancel={() => setInitialPasswordInfo(null)}
+        footer={
+          <Button type="primary" onClick={() => setInitialPasswordInfo(null)}>
+            我已保存
+          </Button>
+        }
+        width={480}
+        destroyOnClose
+      >
+        {initialPasswordInfo && (
+          <>
+            <Typography.Paragraph>
+              此密码只显示一次，用户首次登录将被要求修改。请复制并安全地转交给用户
+              <Typography.Text strong> {initialPasswordInfo.username}</Typography.Text>。
+            </Typography.Paragraph>
+            <Typography.Paragraph>
+              <Typography.Text
+                code
+                copyable={{ text: initialPasswordInfo.password, tooltips: ['复制密码', '已复制'] }}
+                style={{ fontSize: 16 }}
+              >
+                {initialPasswordInfo.password}
+              </Typography.Text>
+            </Typography.Paragraph>
+          </>
+        )}
       </Modal>
     </PageShell>
   );

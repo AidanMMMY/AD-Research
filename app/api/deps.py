@@ -49,6 +49,7 @@ from app.services.strategy_service import StrategyService
 __all__ = [
     "_current_jti",
     "get_current_user",
+    "get_current_user_allow_password_change",
     "get_db",
     "require_admin",
     "get_etf_service",
@@ -81,12 +82,16 @@ __all__ = [
 security = HTTPBearer()
 
 
-def get_current_user(
-    credentials: HTTPAuthorizationCredentials = Depends(security),
+def _authenticate_current_user(
+    credentials: HTTPAuthorizationCredentials,
+    *,
+    allow_password_change: bool,
 ) -> UserResponse:
-    """Validate JWT, check Redis blacklist, and return the current user.
+    """Validate JWT, Redis revocation and the current DB user state.
 
-    Also sets _current_jti for use by the logout endpoint.
+    ``allow_password_change`` is enabled only for the small recovery
+    endpoint set (/auth/me, /auth/change-password and /auth/logout).
+    Every normal API uses the default denying behaviour below.
     """
     token = credentials.credentials
 
@@ -113,14 +118,35 @@ def get_current_user(
 
     db = SessionLocal()
     try:
-        from app.models.user import User
-
         user = db.query(User).filter(User.username == username).first()
         if not user or not user.is_active:
             raise HTTPException(status_code=401, detail="Invalid or inactive user")
-        return UserResponse(id=user.id, username=user.username, role=user.role)
+        if user.must_change_password and not allow_password_change:
+            # 403 is intentional: 401 would trigger the client's refresh
+            # flow even though the credentials themselves are valid.
+            raise HTTPException(status_code=403, detail="请先修改密码后再访问")
+        return UserResponse(
+            id=user.id,
+            username=user.username,
+            role=user.role,
+            must_change_password=user.must_change_password,
+        )
     finally:
         db.close()
+
+
+def get_current_user(
+    credentials: HTTPAuthorizationCredentials = Depends(security),
+) -> UserResponse:
+    """Authenticate for normal APIs, rejecting pending password changes."""
+    return _authenticate_current_user(credentials, allow_password_change=False)
+
+
+def get_current_user_allow_password_change(
+    credentials: HTTPAuthorizationCredentials = Depends(security),
+) -> UserResponse:
+    """Authenticate only the endpoints needed to recover/leave a session."""
+    return _authenticate_current_user(credentials, allow_password_change=True)
 
 
 def require_admin(
@@ -138,11 +164,7 @@ def count_active_admins(db: Session) -> int:
     Used by ``admin_users`` write paths to enforce "at least one active
     admin must remain" (last-admin protection).
     """
-    return (
-        db.query(User)
-        .filter(User.role == "admin", User.is_active.is_(True))
-        .count()
-    )
+    return db.query(User).filter(User.role == "admin", User.is_active.is_(True)).count()
 
 
 def assert_would_keep_at_least_one_admin(
@@ -205,9 +227,16 @@ def get_current_user_optional(request) -> UserResponse | None:
         from app.models.user import User
 
         user = db.query(User).filter(User.username == username).first()
-        if not user or not user.is_active:
+        if not user or not user.is_active or user.must_change_password:
+            # Optional auth must not grant user-scoped privileges while a
+            # password change is pending; the public/anonymous path remains.
             return None
-        return UserResponse(id=user.id, username=user.username, role=user.role)
+        return UserResponse(
+            id=user.id,
+            username=user.username,
+            role=user.role,
+            must_change_password=user.must_change_password,
+        )
     finally:
         db.close()
 

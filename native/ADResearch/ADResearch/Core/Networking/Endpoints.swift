@@ -81,6 +81,11 @@ extension Endpoint {
         try .json(.post, path: "/auth/refresh", body: request, requiresAuth: false, isRefreshCall: true)
     }
 
+    /// POST /auth/change-password {old_password, new_password}
+    static func authChangePassword(_ request: ChangePasswordRequest) throws -> Endpoint {
+        try .json(.post, path: "/auth/change-password", body: request)
+    }
+
     /// POST /auth/logout
     static var authLogout: Endpoint {
         Endpoint(method: .post, path: "/auth/logout")

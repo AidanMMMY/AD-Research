@@ -22,6 +22,11 @@ final class AuthService {
         return try await post("/auth/refresh", body: body)
     }
 
+    func changePassword(oldPassword: String, newPassword: String) async throws -> ChangePasswordResponse {
+        let body = ChangePasswordRequest(oldPassword: oldPassword, newPassword: newPassword)
+        return try await post("/auth/change-password", body: body)
+    }
+
     func logout(accessToken: String) async throws -> VoidResponse {
         return try await post("/auth/logout")
     }
@@ -45,7 +50,7 @@ final class AuthService {
         guard let url = URL(string: "\(baseURL)\(path)") else { throw APIError.invalidURL }
         var req = URLRequest(url: url)
         req.httpMethod = "GET"
-        addAuthHeader(&req)
+        await addAuthHeader(&req)
         return try await perform(req)
     }
 
@@ -54,7 +59,7 @@ final class AuthService {
         var req = URLRequest(url: url)
         req.httpMethod = "POST"
         req.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        addAuthHeader(&req)
+        await addAuthHeader(&req)
         if let body {
             req.httpBody = try JSONEncoder().encode(AnyEncodable2(body))
         }
@@ -65,22 +70,22 @@ final class AuthService {
         guard let url = URL(string: "\(baseURL)\(path)") else { throw APIError.invalidURL }
         var req = URLRequest(url: url)
         req.httpMethod = "DELETE"
-        addAuthHeader(&req)
+        await addAuthHeader(&req)
         return try await perform(req)
     }
 
-    private func addAuthHeader(_ request: inout URLRequest) {
-        Task {
-            if let token = await AuthManager.shared.accessToken {
-                request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
-            }
+    private func addAuthHeader(_ request: inout URLRequest) async {
+        if let token = await AuthManager.shared.accessToken {
+            request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
         }
     }
 
     private func perform<T: Decodable>(_ request: URLRequest) async throws -> T {
         let (data, response) = try await URLSession.shared.data(for: request)
         guard let http = response as? HTTPURLResponse else { throw APIError.invalidResponse }
-        guard (200...299).contains(http.statusCode) else { throw APIError.serverError(http.statusCode) }
+        guard (200...299).contains(http.statusCode) else {
+            throw APIError.fromResponse(statusCode: http.statusCode, data: data)
+        }
         return try JSONDecoder().decode(snakeCaseAware(T.self), from: data)
     }
 }

@@ -6,10 +6,11 @@ Examples:
     python scripts/create_user.py
 
     # Non-interactive mode
-    python scripts/create_user.py --username Aidan --password 'secure-pass' --role user
+    python scripts/create_user.py --username Aidan --password 'Str0ng-pass123' --role user
 
 The password is bcrypt-hashed before storage.
 """
+
 import argparse
 import getpass
 import sys
@@ -19,6 +20,7 @@ from sqlalchemy.orm import Session
 
 from app.core.database import SessionLocal
 from app.models.user import User
+from app.services.password_policy import validate_password
 
 
 def _hash_password(password: str) -> str:
@@ -29,17 +31,22 @@ def create_user(db: Session, username: str, password: str, role: str = "user") -
     """Create a new user account.
 
     Raises:
-        ValueError: If the username already exists.
+        ValueError: If the username already exists or the password is weak.
     """
     existing = db.query(User).filter(User.username == username).first()
     if existing:
         raise ValueError(f"User '{username}' already exists.")
+
+    error = validate_password(password)
+    if error:
+        raise ValueError(error)
 
     user = User(
         username=username,
         password_hash=_hash_password(password),
         role=role,
         is_active=True,
+        must_change_password=True,
     )
     db.add(user)
     db.commit()
@@ -65,13 +72,19 @@ def _prompt_password() -> str:
         if password != confirm:
             print("Passwords do not match. Try again.")
             continue
+        error = validate_password(password)
+        if error:
+            print(error)
+            continue
         return password
 
 
 def main() -> int:
     parser = argparse.ArgumentParser(description="Create a platform user account.")
     parser.add_argument("--username", "-u", help="Login username")
-    parser.add_argument("--password", "-p", help="Plaintext password (use interactive mode to avoid shell history)")
+    parser.add_argument(
+        "--password", "-p", help="Plaintext password (use interactive mode to avoid shell history)"
+    )
     parser.add_argument("--role", "-r", default="user", choices=["admin", "user"], help="User role")
     args = parser.parse_args()
 

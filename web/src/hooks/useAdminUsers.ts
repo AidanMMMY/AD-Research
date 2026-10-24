@@ -20,6 +20,9 @@ export function useAdminUsers() {
 
   const createMutation = useMutation({
     mutationFn: (data: UserCreateRequest) => adminUsersApi.create(data),
+    // Creation can return a one-time plaintext password. Once the page has
+    // copied it to local state and reset the observer, collect it immediately.
+    gcTime: 0,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin-users'] });
     },
@@ -43,6 +46,8 @@ export function useAdminUsers() {
   const resetPasswordMutation = useMutation({
     mutationFn: ({ id, data }: { id: number; data: PasswordResetRequest }) =>
       adminUsersApi.resetPassword(id, data),
+    // Reset responses can contain the same one-time plaintext secret.
+    gcTime: 0,
   });
 
   return {
@@ -53,6 +58,8 @@ export function useAdminUsers() {
     update: updateMutation.mutateAsync,
     delete: deleteMutation.mutateAsync,
     resetPassword: resetPasswordMutation.mutateAsync,
+    resetCreateMutation: createMutation.reset,
+    resetResetPasswordMutation: resetPasswordMutation.reset,
     isCreating: createMutation.isPending,
     isUpdating: updateMutation.isPending,
     isDeleting: deleteMutation.isPending,

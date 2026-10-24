@@ -1,5 +1,5 @@
 import { Component, type ReactNode, type ErrorInfo } from 'react';
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import axios from 'axios';
 import { routes } from './routes';
 import AppLayout from './components/AppLayout';
@@ -12,8 +12,9 @@ import { Spin, Alert, Button } from 'antd';
 
 function RequireAuth({ children }: { children: React.ReactNode }) {
   const { isAuthenticated } = useAuthStore();
-  const { isError, error, isLoading, refetch } = useMe();
+  const { data: meResponse, isError, error, isLoading, refetch } = useMe();
   const { logout } = useAuthStore();
+  const location = useLocation();
 
   const isUnauthorized = axios.isAxiosError(error) && error.response?.status === 401;
 
@@ -54,7 +55,33 @@ function RequireAuth({ children }: { children: React.ReactNode }) {
   if (!isAuthenticated) {
     return <Navigate to="/login" replace />;
   }
+
+  // Persisted user data can lag this query by one effect. Never mount a
+  // protected page until the current /me response is available.
+  const currentUser = meResponse?.data;
+  if (!currentUser) {
+    return (
+      <div className="auth-loading">
+        <Spin size="large" />
+      </div>
+    );
+  }
+
+  // Forced first-login password change (2026-10-24): prefer the fresh /me
+  // flag over the persisted copy so children cannot mount in the gap before
+  // useMe synchronizes the auth store.
+  if (currentUser.must_change_password && location.pathname !== '/change-password') {
+    return <Navigate to="/change-password" replace />;
+  }
   return <>{children}</>;
+}
+
+function AuthenticatedAIHelpDrawer() {
+  const { data: meResponse } = useMe();
+  // RequireAuth guarantees a fresh identity before mounting this child. Keep
+  // the forced-password surface free of AI status requests that must fail 403.
+  if (meResponse?.data.must_change_password) return null;
+  return <AIHelpDrawer />;
 }
 
 function AdminRouteGuard({ children }: { children: React.ReactNode }) {
@@ -81,7 +108,6 @@ class GlobalErrorBoundary extends Component<{ children: ReactNode }, ErrorBounda
   }
 
   componentDidCatch(error: Error, errorInfo: ErrorInfo) {
-    // eslint-disable-next-line no-console
     console.error('Global error boundary caught an error:', error, errorInfo);
   }
 
@@ -144,7 +170,7 @@ export default function App() {
           {/* AIHelpDrawer 仅登录后需要；全局渲染会让 /login 在未登录时也
               调用 /research/ai/status 触发 403（2026-08-08 回归修复）。 */}
           <RequireAuth>
-            <AIHelpDrawer />
+            <AuthenticatedAIHelpDrawer />
           </RequireAuth>
         </AIHelpProvider>
       </BrowserRouter>

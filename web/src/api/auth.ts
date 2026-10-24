@@ -9,6 +9,8 @@ export interface UserProfile {
   id: number;
   username: string;
   role: 'admin' | 'user';
+  /** True ⇒ the app forces a redirect to /change-password */
+  must_change_password?: boolean;
 }
 
 export interface LoginResponse {
@@ -37,6 +39,13 @@ export const authApi = {
   refresh: (refreshToken: string) =>
     client.post<RefreshResponse>('/auth/refresh', { refresh_token: refreshToken }),
   logout: () => client.post('/auth/logout'),
+  changePassword: (data: { old_password: string; new_password: string }) =>
+    client.post<{
+      detail: string;
+      access_token: string;
+      refresh_token: string;
+      token_type: string;
+    }>('/auth/change-password', data),
   registerDevice: (data: { device_name: string; platform: string; push_token?: string }) =>
     client.post<DeviceInfo>('/auth/devices', data),
   listDevices: () => client.get<DeviceInfo[]>('/auth/devices'),

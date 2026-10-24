@@ -8,6 +8,10 @@ final class AuthManager: ObservableObject {
     @Published var isAuthenticated = false
     @Published var currentUser: UserDTO?
 
+    var requiresPasswordChange: Bool {
+        currentUser?.mustChangePassword ?? false
+    }
+
     private let keychain = KeychainStore.shared
     private let authService = AuthService(baseURL: APIClient.shared.baseURL)
 
@@ -26,13 +30,14 @@ final class AuthManager: ObservableObject {
     func restoreSession() async {
         guard let refresh = await keychain.refreshToken, !refresh.isEmpty else { return }
         do {
-            let response = try await authService.refresh(refreshToken: refresh)
-            await keychain.accessToken = response.accessToken
+            // A user awaiting a mandatory password change cannot use /auth/refresh.
+            // APIClient refreshes automatically only when /auth/me returns 401.
             let user: UserDTO = try await APIClient.shared.get("/auth/me")
             currentUser = user
-            isAuthenticated = true
+            isAuthenticated = !user.mustChangePassword
         } catch {
             await keychain.clear()
+            currentUser = nil
             isAuthenticated = false
         }
     }
@@ -42,6 +47,23 @@ final class AuthManager: ObservableObject {
         await keychain.accessToken = response.accessToken
         await keychain.refreshToken = response.refreshToken
         currentUser = response.user
+        isAuthenticated = !response.user.mustChangePassword
+    }
+
+    func changePassword(oldPassword: String, newPassword: String) async throws {
+        let response = try await authService.changePassword(
+            oldPassword: oldPassword,
+            newPassword: newPassword
+        )
+        await keychain.accessToken = response.accessToken
+        await keychain.refreshToken = response.refreshToken
+        if let user = currentUser {
+            currentUser = UserDTO(
+                username: user.username,
+                role: user.role,
+                mustChangePassword: false
+            )
+        }
         isAuthenticated = true
     }
 

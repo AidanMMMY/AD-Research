@@ -2,6 +2,7 @@ import { lazy, Suspense } from 'react';
 import { Navigate, useParams, useSearchParams } from 'react-router-dom';
 
 const Login = lazy(() => import('./pages/Login'));
+const ChangePassword = lazy(() => import('./pages/ChangePassword'));
 const Dashboard = lazy(() => import('./pages/Dashboard'));
 const InstrumentList = lazy(() => import('./pages/InstrumentList'));
 const InstrumentDetail = lazy(() => import('./pages/InstrumentDetail'));
@@ -112,6 +113,9 @@ const LegacyCryptoRedirect = () => {
 
 export const routes: RouteConfig[] = [
   { path: '/login', element: wrap(Login), auth: false },
+  // 强制改密页（2026-10-24）：must_change_password=true 时 RequireAuth 会
+  // 把所有路由弹回这里；无菜单，不出现在侧边栏
+  { path: '/change-password', element: wrap(ChangePassword), auth: true },
   // === 首页 ===
   { path: '/dashboard', element: wrap(Dashboard), auth: true, menu: { name: '首页看板', icon: 'HomeOutlined', group: 'home' } },
   { path: '/global', element: wrap(GlobalMarkets), auth: true, menu: { name: '全球速览', label: '全球速览', icon: 'CompassOutlined', group: 'home' } },

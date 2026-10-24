@@ -6,6 +6,8 @@ interface User {
   id: number;
   username: string;
   role: 'admin' | 'user';
+  /** True ⇒ RequireAuth forces a redirect to /change-password */
+  must_change_password?: boolean;
 }
 
 interface AuthState {

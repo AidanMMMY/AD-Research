@@ -16,6 +16,10 @@ final class AuthStore {
     private(set) var isAuthenticated = false
     /// 当前用户资料（登录响应或 /auth/me 回填）
     private(set) var currentUser: UserProfile?
+    /// 是否被后端要求在首次进入主界面前修改密码
+    var requiresPasswordChange: Bool {
+        currentUser?.mustChangePassword ?? false
+    }
     /// 启动时的会话恢复是否已完成（RootView 据此显示启动态）
     private(set) var hasRestoredSession = false
 
@@ -43,10 +47,28 @@ final class AuthStore {
     func login(username: String, password: String) async throws -> UserProfile {
         let endpoint = try Endpoint.authLogin(LoginRequest(username: username, password: password))
         let response = try await APIClient.shared.send(endpoint, as: LoginResponse.self)
-        persist(accessToken: response.accessToken, refreshToken: response.refreshToken)
+        await persist(accessToken: response.accessToken, refreshToken: response.refreshToken)
         currentUser = response.user
         isAuthenticated = true
         return response.user
+    }
+
+    /// 首次登录强制改密：成功后后端返回并轮换新的令牌对
+    func changePassword(oldPassword: String, newPassword: String) async throws {
+        let endpoint = try Endpoint.authChangePassword(
+            ChangePasswordRequest(oldPassword: oldPassword, newPassword: newPassword)
+        )
+        let response = try await APIClient.shared.send(endpoint, as: ChangePasswordResponse.self)
+        await persist(accessToken: response.accessToken, refreshToken: response.refreshToken)
+        if let user = currentUser {
+            currentUser = UserProfile(
+                id: user.id,
+                username: user.username,
+                role: user.role,
+                mustChangePassword: false
+            )
+        }
+        isAuthenticated = true
     }
 
     /// 登出：尽力通知后端，本地状态无条件清空（对齐 web logout 语义）
@@ -55,7 +77,7 @@ final class AuthStore {
         clearLocalSession()
     }
 
-    /// 从 Keychain 恢复会话：有令牌即视为已登录，再尽力用 /auth/me 回填用户资料。
+    /// 从 Keychain 恢复会话，并用 /auth/me 回填用户资料与强制改密状态。
     /// - 401 → 清会话回登录页
     /// - 网络错误 → 保留会话（离线可用，等下次请求再触发刷新/登出）
     private func restoreSession() async {
@@ -65,16 +87,20 @@ final class AuthStore {
             return
         }
         await APIClient.shared.setTokens(accessToken: access, refreshToken: refresh)
-        isAuthenticated = true
         do {
+            // 在 /auth/me 返回前保持启动态，避免待改密用户短暂进入主 Shell。
             currentUser = try await APIClient.shared.send(.authMe, as: UserProfile.self)
+            isAuthenticated = true
         } catch let error as APIError {
             if error == .unauthorized {
                 clearLocalSession()
+            } else {
+                // 其他错误（离线/5xx/解析失败）：保留会话，currentUser 留空
+                isAuthenticated = true
             }
-            // 其他错误（离线/5xx/解析失败）：保留会话，currentUser 留空
         } catch {
             // 同上
+            isAuthenticated = true
         }
     }
 
@@ -83,12 +109,10 @@ final class AuthStore {
         clearLocalSession()
     }
 
-    private func persist(accessToken: String, refreshToken: String) {
+    private func persist(accessToken: String, refreshToken: String) async {
         KeychainHelper.save(accessToken, account: AppConstants.keychainAccountAccessToken)
         KeychainHelper.save(refreshToken, account: AppConstants.keychainAccountRefreshToken)
-        Task {
-            await APIClient.shared.setTokens(accessToken: accessToken, refreshToken: refreshToken)
-        }
+        await APIClient.shared.setTokens(accessToken: accessToken, refreshToken: refreshToken)
     }
 
     private func clearLocalSession() {

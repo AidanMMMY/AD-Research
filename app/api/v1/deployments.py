@@ -75,7 +75,16 @@ async def _require_admin_for_sse(request: Request) -> UserResponse:
             raise HTTPException(status_code=401, detail="Invalid or inactive user")
         if user.role != "admin":
             raise HTTPException(status_code=403, detail="Admin access required")
-        return UserResponse(id=user.id, username=user.username, role=user.role)
+        if user.must_change_password:
+            # Keep the custom SSE query-token path aligned with the default
+            # auth dependency: pending admins must change password first.
+            raise HTTPException(status_code=403, detail="请先修改密码后再访问")
+        return UserResponse(
+            id=user.id,
+            username=user.username,
+            role=user.role,
+            must_change_password=user.must_change_password,
+        )
     finally:
         db.close()
 

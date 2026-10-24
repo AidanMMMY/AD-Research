@@ -4,9 +4,9 @@
 > 初始密码时的应急重置流程。**旧密码不可恢复**（bcrypt 哈希单向），
 > 一旦重置，原密码即作废。
 
-> 最后核实更新：2026-07-21（服务器项目路径已更正为 `/opt/ad-research`、
-> 生产数据库名更正为 `ad_research`；ssh 别名 `alloy-research` 按本地
-> `~/.ssh/config` 实际配置为准）
+> 最后核实更新：2026-10-24（新增统一密码策略与首次登录强制改密；
+> 服务器项目路径为 `/opt/ad-research`，生产数据库名为 `ad_research`；
+> ssh 别名按本地 `~/.ssh/config` 实际配置为准，当前使用 `ad-research`）
 
 ## 一、什么场景需要走这条流程
 
@@ -76,6 +76,11 @@ ssh alloy-research "docker exec alloyresearch-backend \
   python3 scripts/reset_user_password.py Aidan --password '<NEW_PASSWORD>'"
 ```
 
+> 注意：backend 镜像不一定包含仓库根的 `scripts/`。若容器内报
+> `can't open file ... reset_user_password.py`，先从已更新到目标 commit 的
+> 服务器 checkout 用 `docker cp` 复制脚本及其依赖到容器临时目录，再执行；
+> 完成后删除临时副本。不要为了跑脚本把密码或 `.env` 写进镜像/仓库。
+
 输出应类似：
 
 ```
@@ -84,14 +89,20 @@ ssh alloy-research "docker exec alloyresearch-backend \
 [reset] Done.
 ```
 
-### 3.2 密码强度建议
+### 3.2 密码强度与首次登录要求
 
-最少 12 位。生产建议 16 位随机（混合大小写字母 + 数字 + 特殊符号）：
+密码必须至少 12 位且包含英文字母和数字；生产建议直接使用 16 位随机密码
+（混合大小写字母 + 数字 + 特殊符号）。脚本与管理 API 使用同一套校验，
+弱密码会被拒绝，不再只是警告：
 
 ```bash
 python3 -c "
 import secrets, string
-print(''.join(secrets.choice(string.ascii_letters + string.digits + '!@#%^*_-') for _ in range(16)))
+alphabet = string.ascii_letters + string.digits + '!@#%^*_-'
+chars = [secrets.choice(string.ascii_letters), secrets.choice(string.digits)]
+chars += [secrets.choice(alphabet) for _ in range(14)]
+secrets.SystemRandom().shuffle(chars)
+print(''.join(chars))
 "
 ```
 
@@ -99,7 +110,9 @@ print(''.join(secrets.choice(string.ascii_letters + string.digits + '!@#%^*_-') 
 
 1. 把新密码立即写入密码管理器（1Password / Bitwarden / macOS Keychain）。
 2. 在团队 wiki / IM 里同步新密码（用临时一次性链接，不要发群里永久可见）。
-3. 通知相关用户尽快登录并改为自己能记住的密码。
+3. 通知相关用户用临时密码登录，并按页面要求立即改为自己能记住的密码。
+   重置会设置 `must_change_password=true` 并吊销该用户已有的 refresh token；
+   改密完成前，普通受保护 API 会返回 403，仅放行用户信息、改密和登出。
 
 ### 3.3 验证
 
@@ -118,7 +131,9 @@ curl -X POST https://your-domain/api/v1/auth/login \
   -d '{"username":"admin","password":"<NEW_PASSWORD>"}'
 ```
 
-应返回 `access_token`。
+应返回 `access_token`，且 `user.must_change_password` 为 `true`。用这个临时
+密码登录后应只能进入改密页；改密成功后该标志变为 `false`，并返回一套
+新的 access/refresh token 以维持当前会话。
 
 ---
 
@@ -266,8 +281,8 @@ ssh alloy-research "curl -s -X POST http://127.0.0.1:8000/api/v1/auth/login \
   history 里）。
 - [ ] 在部署 `.env.example` 顶部加红字警告："**部署完成后请把
   `AUTH_ADMIN_PASSWORD` 写入 1Password；不要保留明文在 `.env` 里超过 7 天**"。
-- [ ] admin 第一次登录后强制改密（已登录过的凭据不能再用旧值）—— 需要改
-  `app/api/v1/auth.py` 的登录逻辑 + `users` 表加 `must_change_password` 字段。
+- [x] admin 第一次登录后强制改密（2026-10-24 已实现：创建/重置设置标志，
+  后端限制待改密会话，改密后吊销旧 refresh token 并轮换当前会话）。
 - [ ] 把"admin 密码"加入 deploy checklist 的强制项，每次部署后 grep
   `.env` 确认存在；不存在则运维告警。
 - [ ] **前端区分 HTTP 500 和 401 提示**：现在所有非 2xx 都显示"用户名密码不正确"，
