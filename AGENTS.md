@@ -49,7 +49,7 @@ web/                    # React 前端（真正的前端工程；仓库根的 pa
 deploy/aliyun-ecs/      # 生产编排：docker-compose.yml、nginx.conf、deploy.sh、update.sh
 agent/                  # 独立的数据采集 worker（独立镜像 alloyresearch-agent，跑在 ECS cron）
 research/               # AI 研究编排器与 agents（academic/macro_policy/guru_opinion 等）
-ios/ADResearch/         # iOS 客户端（SwiftUI，早期）
+native/ADResearch/      # 现行 Swift 客户端（macOS companion；唯一维护的 native 端，旧 ios/ADResearch 已于 2026-10-25 退役，回滚：git checkout <退役commit>^ -- ios/）
 reports/                # 生成的 HTML 报告产物
 docs/dev-notes/         # 开发文档，命名约定：YYYYMMDD-主题.md
 tmp/                    # 一次性实验脚本，勿当正式代码
