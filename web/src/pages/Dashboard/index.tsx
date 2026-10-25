@@ -16,6 +16,7 @@ import {
 import { newsApi } from '@/api/news';
 import { useMacroLatest, macroApi } from '@/api/macro';
 import ErrorState from '@/components/ErrorState';
+import { getSessionPhase } from '@/utils/marketSessions';
 import { codeToRegion } from '../../utils/macroRegion';
 import EmptyState from '@/components/EmptyState';
 import LoadingBlock from '@/components/LoadingBlock';
@@ -329,19 +330,9 @@ export default function Dashboard() {
     return v >= 0 ? 'var(--cc-rise)' : 'var(--cc-fall)';
   };
 
-  // Aurora Horizon：晨昏线色相锚点——全球交易时段状态即视觉（2026-10-25）。
-  // 时段划分取整点近似（9-15 东京 / 15-21 欧洲 / 21-5 纽约），足够传达
-  // 「太阳永远在某处交易」的状态语义，不追求精确到分钟的交易所日历。
-  const sessionPhase = useMemo(() => {
-    const now = new Date();
-    const day = now.getDay();
-    const h = now.getHours();
-    if (day === 0 || day === 6) return { label: '周末休市', sub: '隔夜市场数据整备中', hue: 260 };
-    if (h >= 9 && h < 15) return { label: '东京时段', sub: 'A 股连续竞价', hue: 38 };
-    if (h >= 15 && h < 21) return { label: '欧洲时段', sub: '法兰克福 · 伦敦', hue: 175 };
-    if (h >= 21 || h < 5) return { label: '纽约时段', sub: '美股交易中', hue: 200 };
-    return { label: '休市间隙', sub: '盘前数据整备', hue: 260 };
-  }, []);
+  // Aurora Horizon：晨昏线色相锚点（共享逻辑见 utils/marketSessions，
+  // 登录页观测台与本页永远显示同一个世界）。
+  const sessionPhase = useMemo(() => getSessionPhase(), []);
 
   return (
     <div className="dashboard-command-center">

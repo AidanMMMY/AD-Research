@@ -529,3 +529,160 @@ input[type="password"]::-webkit-strong-password-auto-fill-button {
 
 .phase5c-select--xxs { width: 90px; }
 .phase5c-input--md { width: 220px; }
+
+/* ── 晨昏线观测台（2026-10-25）──────────────────────────────────
+ * 与 Dashboard 指挥中心同一设计语言：色相 = 当前全球交易时段
+ * （东京暖金 38 / 欧洲青 175 / 纽约蓝 200 / 休市紫 260）。
+ * 复用全局 aurora.css 的 keyframes（aurora-drift / horizon-breathe）
+ * 与玻璃 token（--glass-* / --horizon-h）。 */
+
+.login-horizon {
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-top: var(--space-5, 20px);
+  padding: 14px 16px 12px;
+  border: 1px solid var(--glass-border);
+  border-radius: 12px;
+  background: var(--glass-bg);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+
+.login-horizon::before {
+  content: '';
+  position: absolute;
+  inset: -60% -20%;
+  z-index: 0;
+  background:
+    radial-gradient(52% 90% at 12% 108%,
+      hsl(var(--horizon-h, 38) 78% 58% / 0.5) 0%,
+      hsl(var(--horizon-h, 38) 70% 50% / 0.18) 46%,
+      transparent 74%),
+    radial-gradient(46% 82% at 62% 118%,
+      hsl(calc(var(--horizon-h, 38) + 24) 62% 52% / 0.3) 0%,
+      transparent 70%),
+    radial-gradient(70% 120% at 100% 100%,
+      hsl(calc(var(--horizon-h, 38) - 40) 48% 46% / 0.22) 0%,
+      transparent 66%);
+  animation: aurora-drift 46s ease-in-out infinite alternate;
+}
+
+.login-horizon::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    hsl(var(--horizon-h, 38) 82% 64% / 0.65) 22%,
+    hsl(calc(var(--horizon-h, 38) + 28) 76% 62% / 0.45) 58%,
+    transparent 100%
+  );
+  pointer-events: none;
+}
+
+.login-horizon__phase,
+.login-horizon__sub {
+  position: relative;
+  z-index: 1;
+}
+
+.login-horizon__phase {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  align-self: flex-start;
+  padding: 4px 12px;
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: 500;
+  color: hsl(var(--horizon-h, 38) 82% 72%);
+  background: hsl(var(--horizon-h, 38) 70% 50% / 0.12);
+  border: 1px solid hsl(var(--horizon-h, 38) 70% 60% / 0.28);
+}
+
+.login-horizon__phase-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: hsl(var(--horizon-h, 38) 85% 62%);
+  box-shadow: 0 0 8px hsl(var(--horizon-h, 38) 85% 60% / 0.8);
+  animation: horizon-breathe 3.2s ease-in-out infinite;
+}
+
+.login-horizon__sub {
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+/* 四城市场时钟：等宽数字，开市点与晨昏线同色呼吸 */
+.login-markets {
+  margin: var(--space-4, 16px) 0 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 2px;
+}
+
+.login-market {
+  display: grid;
+  grid-template-columns: auto 1fr auto auto;
+  gap: 10px;
+  align-items: baseline;
+  padding: 7px 10px;
+  border-radius: 8px;
+}
+
+.login-market:hover,
+.login-market:focus-visible {
+  background: var(--bg-hover);
+}
+
+.login-market__dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--text-tertiary, var(--text-secondary));
+  opacity: 0.6;
+}
+
+.login-market--open .login-market__dot {
+  opacity: 1;
+  background: hsl(var(--horizon-h, 38) 85% 62%);
+  box-shadow: 0 0 8px hsl(var(--horizon-h, 38) 85% 60% / 0.8);
+  animation: horizon-breathe 3.2s ease-in-out infinite;
+}
+
+.login-market__name {
+  font-size: 13px;
+}
+
+.login-market__time {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.02em;
+}
+
+.login-market__state {
+  font-size: 11px;
+  color: var(--text-secondary);
+}
+
+.login-market--open .login-market__state {
+  color: hsl(var(--horizon-h, 38) 70% 68%);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .login-horizon::before,
+  .login-horizon__phase-dot,
+  .login-market--open .login-market__dot {
+    animation: none;
+  }
+}

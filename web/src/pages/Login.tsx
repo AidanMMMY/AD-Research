@@ -1,10 +1,12 @@
 import { useState, useEffect } from 'react';
+import type { CSSProperties } from 'react';
 import { Link, Navigate, useNavigate } from 'react-router-dom';
 import { message } from 'antd';
 import { AxiosError } from 'axios';
 import { UserOutlined, LockOutlined } from '@ant-design/icons';
 import { useAuthStore } from '@/stores/auth';
 import LoginBackdrop from '@/components/LoginBackdrop';
+import { getSessionPhase, getMarketClocks } from '@/utils/marketSessions';
 
 // Shape of the public /health readiness payload (see app/main.py
 // ``health_check``: db/redis are "ok" or "error: <detail>" strings and the
@@ -20,6 +22,14 @@ export default function Login() {
   const [loading, setLoading] = useState(false);
   const [form, setForm] = useState({ username: '', password: '' });
   const [health, setHealth] = useState<HealthReport | null>(null);
+  // 晨昏线观测台时钟（2026-10-25）：纯前端 Intl 计算，30s 一跳。
+  const [clock, setClock] = useState(() => new Date());
+  useEffect(() => {
+    const t = window.setInterval(() => setClock(new Date()), 30_000);
+    return () => window.clearInterval(t);
+  }, []);
+  const phase = getSessionPhase(clock);
+  const markets = getMarketClocks(clock);
 
   const token = localStorage.getItem('token');
 
@@ -226,6 +236,30 @@ export default function Login() {
             让每一次投资决策，都有数据可依
           </p>
         </div>
+
+        {/* 晨昏线观测台：太阳永远在某处交易——与 Dashboard 同一时段逻辑 */}
+        <div
+          className="login-horizon"
+          style={{ '--horizon-h': phase.hue } as CSSProperties}
+          role="status"
+          aria-label={`当前全球交易时段：${phase.label}，${phase.sub}`}
+        >
+          <div className="login-horizon__phase">
+            <span className="login-horizon__phase-dot" aria-hidden="true" />
+            {phase.label}
+          </div>
+          <div className="login-horizon__sub">{phase.sub}</div>
+        </div>
+        <ul className="login-markets" aria-label="全球市场时钟">
+          {markets.map((m) => (
+            <li key={m.key} className={`login-market${m.open ? ' login-market--open' : ''}`}>
+              <span className="login-market__dot" aria-hidden="true" />
+              <span className="login-market__name">{m.name}</span>
+              <span className="login-market__time">{m.time}</span>
+              <span className="login-market__state">{m.open ? '交易中' : '休市'}</span>
+            </li>
+          ))}
+        </ul>
 
         <div className="login-brand-footer">
           {/* Live backend health from the public /health endpoint (no token).
