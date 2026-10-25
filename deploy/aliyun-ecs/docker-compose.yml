@@ -43,6 +43,14 @@ x-backend-env: &backend-env
   AUTH_PASSWORD_RESET_ENABLED: ${AUTH_PASSWORD_RESET_ENABLED:-false}
   # 魔法链接与 verify-link 302 的目标源；生产须配 https://www.alloyresearch.net
   FRONTEND_BASE_URL: ${FRONTEND_BASE_URL:-}
+  # 事务邮件（注册验证/密码重置）+ 通知邮件的全局 SMTP；163 授权码充当密码。
+  # 465 隐式 SSL 与 notification_service/transactional_email 实现一致。
+  SMTP_HOST: ${SMTP_HOST:-}
+  SMTP_PORT: ${SMTP_PORT:-465}
+  SMTP_USER: ${SMTP_USER:-}
+  SMTP_PASSWORD: ${SMTP_PASSWORD:-}
+  SMTP_FROM: ${SMTP_FROM:-}
+  SMTP_USE_TLS: ${SMTP_USE_TLS:-true}
 
 services:
   postgres:
