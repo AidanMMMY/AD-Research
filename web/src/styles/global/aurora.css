@@ -167,6 +167,21 @@
   animation-delay: 70ms;
 }
 
+/* ── 盒化后的垂直节奏统管（2026-10-25 用户实测第二反馈）──
+ * 旧版无框区块靠自身上下 padding 造间距；玻璃盒化后 padding 被边框包进
+ * 盒内，相邻卡片 0px 贴死（每日研报↔下方网格），而 .cc-grid 又留着
+ * margin-bottom——节奏不一致。改为容器 gap 统一负责，清零各区块自带
+ * 纵向 margin 防止叠加。 */
+.dashboard-command-center .cc-main {
+  gap: var(--space-5, 20px);
+}
+
+.dashboard-command-center .cc-horizon,
+.dashboard-command-center .cc-pulse-grid,
+.dashboard-command-center .cc-grid {
+  margin-bottom: 0;
+}
+
 /* ── 外壳呼应：侧边栏顶端与地平线同源的极淡洗色 ── */
 .app-layout__nav {
   background-image: linear-gradient(
