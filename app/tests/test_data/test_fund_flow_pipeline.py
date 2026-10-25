@@ -22,7 +22,11 @@ from app.data.providers.fund_flow_provider import FundFlowProvider
 
 
 class TestComputeComposite:
-    """composite_score 按有效权重归一，缺失分量不再按 0 拉低量程。"""
+    """composite_score：缺失分量按中性 0 计入，不按有效权重重归一。
+
+    2026-10-25 语义修复：旧版「除以 Σ有效权重」会把少量饱和分量放大到
+    满量程（生产 10-21~23 每天约 400 只恰好 ±100 并列，资金信号榜头部
+    失去区分度）。新语义：证据越少分数越保守。"""
 
     def test_full_components_still_full_scale(self) -> None:
         parts = {
@@ -37,18 +41,19 @@ class TestComputeComposite:
         assert score == 100.0
         assert breakdown["coverage"] == 1.0
 
-    def test_missing_components_normalized_by_effective_weight(self) -> None:
-        # 只有主力分量 (weight 0.40) 且打满 → 归一后应为 +100 而非 40
+    def test_missing_components_contribute_neutral_zero(self) -> None:
+        # 只有主力分量 (weight 0.40) 且打满 → 40 分而非 100：
+        # 缺失证据不得被放大成满分（旧版 bug 的复现用例）。
         score, breakdown = _compute_composite({"main": 1e8})
-        assert score == 100.0
+        assert score == 40.0
         assert breakdown["coverage"] == WEIGHTS["main"]
         assert breakdown["margin"] == 0.0
 
-    def test_partial_components_keep_full_range_negative(self) -> None:
+    def test_partial_components_stay_conservative_negative(self) -> None:
         # 主力 -1 倍阈值 (weight 0.40) + 融资 +1 倍阈值 (weight 0.20)
-        # raw = -40 + 20 = -20, Σ有效权重 = 0.60 → -20 / 0.60 = -33.3333
+        # raw = -40 + 20 = -20，缺失分量按 0 计 → -20 而非 -33.33
         score, breakdown = _compute_composite({"main": -1e8, "margin": 5e7})
-        assert score == round(-20.0 / 0.6, 4)
+        assert score == -20.0
         assert breakdown["coverage"] == round(WEIGHTS["main"] + WEIGHTS["margin"], 4)
 
     def test_all_missing_returns_zero_with_zero_coverage(self) -> None:

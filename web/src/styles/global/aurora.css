@@ -126,7 +126,10 @@
   font-variant-numeric: tabular-nums;
 }
 
-/* ── 玻璃卡面（作用于指挥中心卡片层）── */
+/* ── 玻璃卡面（作用于指挥中心卡片层）──
+ * 旧版 .cc-card 是无框贴边设计（水平 padding 0、hairline 通栏）；玻璃层
+ * 引入可见边框/圆角后必须同步补水平内边距，否则内容顶死边框（2026-10-25
+ * 用户实测截图反馈）。 */
 .dashboard-command-center .cc-card,
 .dashboard-command-center .cc-pulse-grid {
   position: relative;
@@ -135,6 +138,7 @@
   background: var(--glass-bg);
   backdrop-filter: blur(10px);
   -webkit-backdrop-filter: blur(10px);
+  padding: var(--space-4, 16px);
   box-shadow:
     inset 0 1px 0 var(--glass-highlight),
     0 8px 28px var(--horizon-shadow);

@@ -84,9 +84,11 @@ def _norm(x: float | None, threshold: float) -> float:
 def _compute_composite(parts: dict[str, float | None]) -> tuple[float, dict[str, float]]:
     """计算 composite_score + 各分量贡献 (raw, 0-100 范围)。
 
-    缺失分量 (None) 不再按 0 计入：按有效权重归一
-    (score ÷ Σ有效权重)，保证部分分量缺失时 composite_score 仍落在
-    [-100, +100] 全量程；``breakdown["coverage"]`` 记录有效权重占比。
+    缺失分量 (None) 按中性 0 贡献计入，**不**按有效权重重归一。
+    2026-10-25 语义修复：旧版 ``score ÷ Σ有效权重`` 会把少量饱和分量
+    放大到满量程——生产 10-21~23 每天约 400 只标的恰好 ±100 并列，
+    资金信号榜 Top 20 全是 100 分、失去区分度。新语义：证据越少分数
+    越保守；``breakdown["coverage"]`` 仍记录有效权重占比供前端展示。
     """
     breakdown: dict[str, float] = {}
     score = 0.0
@@ -101,8 +103,6 @@ def _compute_composite(parts: dict[str, float | None]) -> tuple[float, dict[str,
         breakdown[name] = round(contrib, 4)
         score += contrib
         effective_weight += weight
-    if effective_weight > 0:
-        score = score / effective_weight
     breakdown["coverage"] = round(effective_weight, 4)
     return round(score, 4), breakdown
 
