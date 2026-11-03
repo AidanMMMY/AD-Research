@@ -328,6 +328,12 @@ class AuthSettings(BaseSettings):
     # off, POST /auth/register 404s and the unverified-email login gate is
     # inactive, so existing deployments behave exactly as before.
     REGISTRATION_ENABLED: bool = False
+
+    # ── 静态数据 API Key（2026-11-04，外部只读数据消费方专用）──
+    # X-API-Key 请求头直接放行（无需 JWT 登录/续期），映射到专用服务账号
+    # （普通 user 角色：admin/交易域天然不可达）。撤销=换 key；置空=关闭通道。
+    DATA_API_KEY: str = ""
+    DATA_API_USERNAME: str = "external_data_1"
     # Password-reset master switch (2026-10-25). Independent of registration
     # because most existing accounts have no email on file — enable only for
     # a small verified cohort first. When off, the forgot/reset endpoints

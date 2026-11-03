@@ -5,6 +5,7 @@ Re-exports all model classes for convenient imports.
 
 from app.models.audit_log import AuditLog
 from app.models.cninfo_report import CninfoReport
+from app.models.data_api_access_log import DataApiAccessLog  # noqa: F401
 from app.models.digest import DailyDigest
 from app.models.disclosure_route import CompanyDisclosureRoute
 from app.models.email_verification import EmailVerification

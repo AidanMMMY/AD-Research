@@ -6,7 +6,7 @@ Provides database session, service instance, and auth dependencies for all API r
 import contextvars
 from collections.abc import Generator
 
-from fastapi import Depends, HTTPException
+from fastapi import Depends, HTTPException, Request
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from jose import JWTError, jwt
 from sqlalchemy.orm import Session
@@ -79,7 +79,36 @@ __all__ = [
 ]
 
 
-security = HTTPBearer()
+security = HTTPBearer(auto_error=False)
+
+
+def _authenticate_data_api_key(api_key: str) -> UserResponse:
+    """Static X-API-Key path for external read-only data consumers.
+
+    Bypasses the JWT lifecycle entirely (no login, no refresh, no expiry).
+    Maps onto the dedicated service user with the regular ``user`` role —
+    admin and trading endpoints stay unreachable. Revocation = rotate the
+    key; an empty :setting:`DATA_API_KEY` disables the path (401).
+    """
+    import hmac
+
+    expected = auth_settings.DATA_API_KEY
+    if not expected or not hmac.compare_digest(api_key, expected):
+        raise HTTPException(status_code=401, detail="Invalid API key")
+    db = SessionLocal()
+    try:
+        user = db.query(User).filter(User.username == auth_settings.DATA_API_USERNAME).first()
+        if not user or not user.is_active or user.must_change_password:
+            # Same 401 for all cases: no information about the service user.
+            raise HTTPException(status_code=401, detail="Invalid API key")
+        return UserResponse(
+            id=user.id,
+            username=user.username,
+            role=user.role,
+            must_change_password=False,
+        )
+    finally:
+        db.close()
 
 
 def _authenticate_current_user(
@@ -93,6 +122,10 @@ def _authenticate_current_user(
     endpoint set (/auth/me, /auth/change-password and /auth/logout).
     Every normal API uses the default denying behaviour below.
     """
+    if credentials is None:
+        # auto_error=False on HTTPBearer (for the X-API-Key path): a request
+        # without any Authorization header must still fail as 401.
+        raise HTTPException(status_code=401, detail="Invalid token")
     token = credentials.credentials
 
     try:
@@ -136,9 +169,13 @@ def _authenticate_current_user(
 
 
 def get_current_user(
+    request: Request,
     credentials: HTTPAuthorizationCredentials = Depends(security),
 ) -> UserResponse:
     """Authenticate for normal APIs, rejecting pending password changes."""
+    api_key = request.headers.get("X-API-Key")
+    if api_key:
+        return _authenticate_data_api_key(api_key)
     return _authenticate_current_user(credentials, allow_password_change=False)
 
 

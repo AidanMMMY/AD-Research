@@ -7,7 +7,7 @@ import subprocess
 import tempfile
 from pathlib import Path
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
@@ -17,6 +17,7 @@ from starlette.types import Scope
 # Import strategy modules so all built-in strategies self-register.
 import app.strategies  # noqa: F401
 from app.api.v1 import (
+    admin_data_usage,
     admin_users,
     analysis,
     attribution,
@@ -119,6 +120,46 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+
+# ── Data API access audit (2026-11-04) ──
+# 记录每一个携带 X-API-Key 的请求（外部只读数据消费方通道，见
+# app/api/deps.py::_authenticate_data_api_key）。best-effort：审计写失败
+# 绝不影响业务响应。聚合展示走 /admin/data-api/usage（admin-only）。
+@app.middleware("http")
+async def audit_data_api_access(request: Request, call_next):
+    if request.headers.get("X-API-Key") is None:
+        return await call_next(request)
+    import time
+
+    started = time.monotonic()
+    response = await call_next(request)
+    duration_ms = int((time.monotonic() - started) * 1000)
+    try:
+        from app.api.deps import SessionLocal as _AuditSessionLocal
+        from app.config import auth_settings as _audit_auth_settings
+        from app.models.data_api_access_log import DataApiAccessLog
+
+        audit_db = _AuditSessionLocal()
+        try:
+            audit_db.add(
+                DataApiAccessLog(
+                    username=_audit_auth_settings.DATA_API_USERNAME,
+                    method=request.method,
+                    path=request.url.path[:255],
+                    status_code=response.status_code,
+                    duration_ms=duration_ms,
+                    client_ip=request.client.host if request.client else None,
+                    user_agent=(request.headers.get("User-Agent") or "")[:255] or None,
+                )
+            )
+            audit_db.commit()
+        finally:
+            audit_db.close()
+    except Exception:  # noqa: BLE001 — 审计绝不破坏响应
+        logging.getLogger(__name__).debug("data api audit write failed", exc_info=True)
+    return response
+
+
 # Health check endpoint
 # ── Readiness probe (ops P1-13) ──
 # Delegates every dependency check to ``app.core.health.readiness_check`` so
@@ -162,11 +203,10 @@ def health_check():
     # per-component status even when DB is degraded).
     return JSONResponse(content=payload, status_code=200)
 
+
 # Include v1 routers
 app.include_router(etfs.router, prefix=f"{settings.api_v1_prefix}/etfs", tags=["ETFs"])
-app.include_router(
-    etf_holdings.router, prefix=f"{settings.api_v1_prefix}", tags=["ETF Holdings"]
-)
+app.include_router(etf_holdings.router, prefix=f"{settings.api_v1_prefix}", tags=["ETF Holdings"])
 # Coverage / stats / blacklist router — powers the dashboard card and
 # the post-ETL alert log in ``etf_holdings_quarterly``.  Same prefix
 # as the operational etf_holdings router so the four endpoints land
@@ -183,37 +223,28 @@ app.include_router(
 app.include_router(
     indicators.router, prefix=f"{settings.api_v1_prefix}/indicators", tags=["Indicators"]
 )
-app.include_router(
-    analysis.router, prefix=f"{settings.api_v1_prefix}/analysis", tags=["Analysis"]
-)
+app.include_router(analysis.router, prefix=f"{settings.api_v1_prefix}/analysis", tags=["Analysis"])
 app.include_router(etl.router, prefix=f"{settings.api_v1_prefix}/etl", tags=["ETL"])
-app.include_router(
-    etl_status.router, prefix=f"{settings.api_v1_prefix}/etl", tags=["ETL"]
-)
-app.include_router(
-    scoring.router, prefix=f"{settings.api_v1_prefix}/scores", tags=["Scoring"]
-)
-app.include_router(
-    screening.router, prefix=f"{settings.api_v1_prefix}/screen", tags=["Screening"]
-)
-app.include_router(
-    reports.router, prefix=f"{settings.api_v1_prefix}/reports", tags=["Reports"]
-)
-app.include_router(
-    digest.router, prefix=f"{settings.api_v1_prefix}/digest", tags=["Digest"]
-)
+app.include_router(etl_status.router, prefix=f"{settings.api_v1_prefix}/etl", tags=["ETL"])
+app.include_router(scoring.router, prefix=f"{settings.api_v1_prefix}/scores", tags=["Scoring"])
+app.include_router(screening.router, prefix=f"{settings.api_v1_prefix}/screen", tags=["Screening"])
+app.include_router(reports.router, prefix=f"{settings.api_v1_prefix}/reports", tags=["Reports"])
+app.include_router(digest.router, prefix=f"{settings.api_v1_prefix}/digest", tags=["Digest"])
 app.include_router(
     research_reports.router,
     prefix=f"{settings.api_v1_prefix}/research-reports",
     tags=["Research Reports"],
 )
-app.include_router(
-    auth.router, prefix=f"{settings.api_v1_prefix}/auth", tags=["auth"]
-)
+app.include_router(auth.router, prefix=f"{settings.api_v1_prefix}/auth", tags=["auth"])
 app.include_router(
     cninfo_reports.router,
     prefix=f"{settings.api_v1_prefix}/cninfo-reports",
     tags=["CNINFO Reports"],
+)
+app.include_router(
+    admin_data_usage.router,
+    prefix=f"{settings.api_v1_prefix}/admin",
+    tags=["Admin"],
 )
 app.include_router(
     admin_users.router,
@@ -225,9 +256,7 @@ app.include_router(
     prefix=f"{settings.api_v1_prefix}/admin",
     tags=["Admin"],
 )
-app.include_router(
-    stats.router, prefix=f"{settings.api_v1_prefix}/stats", tags=["Statistics"]
-)
+app.include_router(stats.router, prefix=f"{settings.api_v1_prefix}/stats", tags=["Statistics"])
 app.include_router(
     sector_rotation.router, prefix=f"{settings.api_v1_prefix}/analysis", tags=["Analysis"]
 )
@@ -251,9 +280,7 @@ app.include_router(
 app.include_router(
     backtests.router, prefix=f"{settings.api_v1_prefix}/backtests", tags=["Backtests"]
 )
-app.include_router(
-    signals.router, prefix=f"{settings.api_v1_prefix}/signals", tags=["Signals"]
-)
+app.include_router(signals.router, prefix=f"{settings.api_v1_prefix}/signals", tags=["Signals"])
 app.include_router(
     attribution.router, prefix=f"{settings.api_v1_prefix}/analysis", tags=["Analysis"]
 )
@@ -361,8 +388,20 @@ _NON_SPA_PREFIXES = ("/api/", "/health", "/docs", "/redoc", "/openapi.json")
 # 代码（如 /instruments/510300.SH）也会含点，黑名单式判断会把它们误判为
 # 静态资源而不做 SPA fallback，导致详情页直达/刷新 404（2026-08-08 修复）。
 _STATIC_EXTENSIONS = {
-    ".js", ".css", ".png", ".jpg", ".jpeg", ".gif", ".svg", ".ico", ".webp",
-    ".woff", ".woff2", ".ttf", ".eot", ".map",
+    ".js",
+    ".css",
+    ".png",
+    ".jpg",
+    ".jpeg",
+    ".gif",
+    ".svg",
+    ".ico",
+    ".webp",
+    ".woff",
+    ".woff2",
+    ".ttf",
+    ".eot",
+    ".map",
 }
 
 
@@ -432,9 +471,7 @@ if web_dist.exists():
 # We use a file lock (flock on /tmp) plus an opt-in env flag (ENABLE_SCHEDULER)
 # so that at most one worker actually runs the cron jobs. The other workers
 # short-circuit cleanly and just serve HTTP traffic.
-_SCHEDULER_LOCK_PATH = os.path.join(
-    tempfile.gettempdir(), "ad_research_scheduler.lock"
-)
+_SCHEDULER_LOCK_PATH = os.path.join(tempfile.gettempdir(), "ad_research_scheduler.lock")
 
 
 def _try_acquire_scheduler_leadership() -> bool:
@@ -476,13 +513,10 @@ async def startup_event():
 
     try:
         init_scheduler()
-        logging.getLogger(__name__).warning(
-            "[Scheduler] Started on worker pid=%s", os.getpid()
-        )
+        logging.getLogger(__name__).warning("[Scheduler] Started on worker pid=%s", os.getpid())
     except Exception as exc:
-        logging.getLogger(__name__).exception(
-            "[Scheduler] Failed to start at startup: %s", exc
-        )
+        logging.getLogger(__name__).exception("[Scheduler] Failed to start at startup: %s", exc)
+
 
 @app.on_event("shutdown")
 async def shutdown_event():

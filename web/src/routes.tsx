@@ -30,6 +30,7 @@ const StrategyLibrary = lazy(() => import('./pages/StrategyLibrary'));
 const BacktestList = lazy(() => import('./pages/BacktestList'));
 const BacktestDetail = lazy(() => import('./pages/BacktestDetail'));
 const SignalDashboard = lazy(() => import('./pages/SignalDashboard'));
+const AdminDataUsage = lazy(() => import('./pages/AdminDataUsage'));
 const AdminUsers = lazy(() => import('./pages/AdminUsers'));
 const AdminDeployments = lazy(() => import('./pages/AdminDeployments'));
 const ResearchNotes = lazy(() => import('./pages/ResearchNotes'));
@@ -214,6 +215,7 @@ export const routes: RouteConfig[] = [
   { path: '/scanner', element: wrap(MarketScanner), auth: true, menu: { name: '标的库同步', icon: 'ScanOutlined', group: 'ops' } },
   // === 管理 ===
   { path: '/admin/users', element: wrap(AdminUsers), auth: true, admin: true, menu: { name: '用户管理', icon: 'TeamOutlined', group: 'admin' } },
+  { path: '/admin/data-usage', element: wrap(AdminDataUsage), auth: true, admin: true, menu: { name: '数据通道用量', icon: 'ApiOutlined', group: 'admin' } },
   { path: '/admin/deployments', element: wrap(AdminDeployments), auth: true, admin: true, menu: { name: '部署管理', icon: 'CloudServerOutlined', group: 'admin' } },
   { path: '/', element: <Navigate to="/dashboard" replace />, auth: true },
   // Catch-all 404 (must stay last)
