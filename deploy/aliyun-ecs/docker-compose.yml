@@ -13,6 +13,10 @@ x-backend-env: &backend-env
   MINIMAX_CN_API_KEY: ${MINIMAX_CN_API_KEY:-}
   MINIMAX_MODEL: ${MINIMAX_MODEL:-minimax-m3}
   DEEPSEEK_API_KEY: ${DEEPSEEK_API_KEY:-}
+  # LLM failover 链（minimax→glm→kimi）：有 key 的 provider 自动入链
+  GLM_API_KEY: ${GLM_API_KEY:-}
+  GLM_BASE_URL: ${GLM_BASE_URL:-}
+  KIMI_API_KEY: ${KIMI_API_KEY:-}
   ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
   FINNHUB_API_KEY: ${FINNHUB_API_KEY:-}
   TIINGO_API_KEY: ${TIINGO_API_KEY:-}
