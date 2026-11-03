@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>数据覆盖现状评估与渐进补齐方案（2026-11-04）</title>
+<style>
+  :root { color-scheme: light dark; }
+  body { font-family: -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif; max-width: 1080px; margin: 0 auto; padding: 32px 24px 64px; line-height: 1.75; color: #1f2328; background: #ffffff; }
+  @media (prefers-color-scheme: dark) { body { color: #e6edf3; background: #0d1117; } th, td { border-color: #30363d !important; } code { background: #21262d !important; } thead { background: #161b22 !important; } }
+  h1 { font-size: 1.7em; border-bottom: 2px solid #d0a215; padding-bottom: 12px; }
+  h2 { font-size: 1.3em; margin-top: 2.2em; border-bottom: 1px solid #d8dee4; padding-bottom: 6px; }
+  h3 { font-size: 1.08em; margin-top: 1.8em; }
+  table { border-collapse: collapse; width: 100%; margin: 14px 0; font-size: 14px; }
+  th, td { border: 1px solid #d8dee4; padding: 7px 10px; text-align: left; vertical-align: top; }
+  thead { background: #f6f8fa; }
+  code { font-family: "SF Mono", Menlo, Consolas, monospace; font-size: 0.88em; background: #f0f2f4; padding: 1px 5px; border-radius: 4px; }
+  .warn { color: #b45309; font-weight: 600; }
+  .crit { color: #b91c1c; font-weight: 700; }
+  .ok { color: #15803d; font-weight: 600; }
+  blockquote { border-left: 4px solid #d0a215; margin: 1em 0; padding: 4px 16px; background: #fffbeb; color: #57534e; }
+  @media (prefers-color-scheme: dark) { blockquote { background: #1f1c10; color: #b8ab90; } }
+  ol li, ul li { margin: 4px 0; }
+  .concl { background: #f6f8fa; border: 1px solid #d8dee4; border-radius: 8px; padding: 6px 22px; }
+  @media (prefers-color-scheme: dark) { .concl { background: #161b22; } }
+</style>
+</head>
+<body>
+
+<h1>数据覆盖现状评估与渐进补齐方案（2026-11-04）</h1>
+
+<blockquote>评估 agent 一次性报告：生产库实测（ECS <code>alloyresearch-postgres</code>，2026-11-04 采样）+ 代码侧取数限制考古 + 分阶段补数方案。本文只做评估与方案，未改任何代码、未触发任何回填。</blockquote>
+
+<h2>1. 现状表（范围 × 周期 × 行数）</h2>
+
+<h3>1.1 行情主链路：etf_info / instrument_daily_bar / etf_indicator / etf_score</h3>
+<table>
+<thead><tr><th>市场</th><th>宇宙（etf_info）</th><th>有 bar 标的</th><th>bar 最早</th><th>bar 最新</th><th>中位行数/标的</th><th>bar 总行数</th><th>指标行数</th><th>评分行数</th></tr></thead>
+<tbody>
+<tr><td>A股</td><td><b>7,889</b>（STOCK 5,593 + ETF 2,296）</td><td>7,261</td><td>2010-01-04</td><td>2026-11-02</td><td>1,619</td><td>14,448,707</td><td>14,330,713</td><td>2,134,642</td></tr>
+<tr><td>US</td><td><b>579</b>（S&amp;P500 510 + 精选 ETF 69）</td><td>570</td><td>2010-01-04</td><td>2026-11-02</td><td>4,227</td><td>2,253,143</td><td>2,241,653</td><td>341,933</td></tr>
+<tr><td>CRYPTO</td><td><b>25</b>（人工精选清单）</td><td>22</td><td class="warn">2026-07-12</td><td>2026-11-02</td><td>114</td><td>2,508</td><td>2,290</td><td>6,738</td></tr>
+</tbody></table>
+
+<p>A股首批数据分布：2,100 只早于 2012（≈上市日起全史）、2015-2017 首行 1,015 只、2018-2020 754 只、2021-2023 1,094 只、≥2024 2,012 只——后半段与 IPO 波次吻合，但混入了「历史缺口」标的（见第 2 节）。</p>
+<p>美股深度反而是三市场里最好的：493/570 只有 2012 年以前数据（中位 4,227 行 ≈ 16.8 年），真正的短板是<b>宇宙规模</b>——只有标普 500 成分股 + 69 只精选 ETF，NASDAQ 其余 ~3,000 只、罗素成分、小盘股全部缺席。CRYPTO 覆盖最薄：25 个 curated 币种（<code>binance_provider.py:33-59</code>），仅约 4 个月日线，而 Binance klines 本身有 2017 年起的免费全史。</p>
+
+<h3>1.2 其他资产域覆盖面与深度</h3>
+<table>
+<thead><tr><th>表</th><th>行数</th><th>标的/序列数</th><th>最早</th><th>最新</th><th>评价</th></tr></thead>
+<tbody>
+<tr><td>stock_fundamental（PE/PB/市值）</td><td>1,079,364</td><td>5,593 股</td><td class="warn">2026-01-05</td><td>2026-11-02</td><td class="warn">仅 11 个月，估值史缺口最大的表</td></tr>
+<tr><td>adj_factor_history</td><td>496,682</td><td>—</td><td class="warn">2025-12-04</td><td>2026-11-02</td><td class="warn">仅 11 个月</td></tr>
+<tr><td>futures_daily_bars</td><td>212,974</td><td>85 合约</td><td>2005-01-04</td><td>2026-11-02</td><td class="ok">深度好（21 年）</td></tr>
+<tr><td>global_index_daily_bar</td><td>72,493</td><td>—</td><td>1990-12-19</td><td>2026-11-03</td><td class="ok">深度好</td></tr>
+<tr><td>macro_indicator</td><td>72,296</td><td>65 序列（cn 15 / us 24 / global 22 / eu 4）</td><td>cn 1996-02 / 其余 2016</td><td>2026-11-03</td><td class="ok">深度可用</td></tr>
+<tr><td>sw_industry_index_return</td><td>—</td><td>31 行业</td><td class="warn">2024-11-21</td><td>2026-11-03</td><td class="warn">仅 1 年</td></tr>
+<tr><td>cninfo_reports</td><td>121,653</td><td>—</td><td>2021-07-13</td><td class="crit">2026-09-19</td><td class="crit">已停更 ~6 周（job 近期 failed）</td></tr>
+<tr><td>etf_fund_flow</td><td>109,008</td><td>—</td><td class="warn">2026-07-15</td><td>2026-11-03</td><td class="warn">仅 4 个月</td></tr>
+<tr><td>sec_filings</td><td>1,477</td><td>49 公司</td><td>—</td><td>—</td><td>浅（EDGAR 免费全量，可选扩面）</td></tr>
+</tbody></table>
+
+<p>存储现状：整库 24 GB；最大表 news_article 6.5 GB、etf_indicator 5.6 GB、instrument_daily_bar 5.1 GB、cninfo_reports 2.5 GB。ECS 数据盘 /data 118 GB 用 82 GB（<b>余 32 GB</b>）。</p>
+
+<h2>2. 缺口量化（核心数字）</h2>
+
+<h3>2.1 A股「上市日起早于首根 bar」的历史洞</h3>
+<p>以 <code>list_date + 30 天 &lt; 首根 bar 日</code> 判定（etf_info.list_date 覆盖率 7,768/7,889）：</p>
+<table>
+<thead><tr><th>类型</th><th>缺口标的</th><th>缺口规模（日历天合计）</th><th>估算缺失行数</th></tr></thead>
+<tbody>
+<tr><td>STOCK</td><td><b>1,507</b></td><td>5,184,219</td><td><b>≈ 348 万</b></td></tr>
+<tr><td>ETF</td><td><b>989</b></td><td>1,398,693</td><td><b>≈ 94 万</b></td></tr>
+<tr><td>合计</td><td>2,496</td><td>—</td><td><b>≈ 442 万行</b>（按 245 交易日/年折算）</td></tr>
+</tbody></table>
+<p>个股缺口分布：&gt;10 年 762 只、6-10 年 311 只、3-6 年 170 只、1-3 年 196 只、≤1 年 68 只——<b>762 只老股票缺十年以上</b>，是主力缺口。另有 <b>618 只退市 A股零数据</b>（仅 24 只退市股有 bar）；10 只 active 无 bar。</p>
+
+<h3>2.2 其他缺口</h3>
+<ul>
+<li><b>估值（stock_fundamental）</b>：只有 2026-01-05 起。补到 2015 年 ≈ 2,800 个交易日 × 全市场（daily_basic 同样 1 次/日全市场 bulk）。</li>
+<li><b>CRYPTO</b>：25 币全部只从 2026-07-12 起；主流币可回补至 2017-18 年，全量 ≈ 80-100 次分页调用，零配额。</li>
+<li><b>US 深史</b>：570 只中 8 只只有 2024+ 数据、9 只零数据；受 Tiingo 500 symbols/月 + yfinance 云 IP 限制。</li>
+<li><b>申万行业指数</b>：2024-11-21 起，可回补 2021→2024。</li>
+<li><b>ETF 资金流</b>：2026-07-15 起（东财免费，可回补更早，优先级低）。</li>
+</ul>
+
+<h2>3. 取数限制清单（代码考古，file:line）</h2>
+
+<h3>Tushare（A股市主源）</h3>
+<ul>
+<li><code>app/data/providers/tushare_provider.py:8-15</code>：免费档注释——200 req/min、<b>5,000 积分/天</b>；daily ≈ 2 积分/股、daily_basic ≈ 0.2 积分/股。</li>
+<li><code>:36-41</code>：<code>_API_DELAY=0.5s</code>、<code>_BATCH_DELAY=3.0s</code>、<code>_MAX_WORKERS=5</code>、<code>_RETRIES=2</code>。</li>
+<li><code>:704-714</code>：<code>fetch_daily_all_market(trade_date)</code> <b>1 次调用取全市场当日</b>；注释自估「~5000 行 × 2 分 ≈ 10,000 分 → bulk backfill 摊多天」——⚠️ 与生产实际（日终每天 1 次全市场调用成功）矛盾，说明现用 token 档位更高，<b>真实积分单价必须探针实测</b>。</li>
+<li><code>:429-447</code>：new_share 需更高积分（有 fallback）；index_member 需 elevated 积分。</li>
+<li><code>a_share_stock_daily.py:70-77</code> 日终增量只从「库内最新日+1」续抓；<code>a_share.py:74</code> ETF 日终窗口仅 7 天——<b>历史洞永远不会被日终 ETL 自动补上</b>。</li>
+</ul>
+
+<h3>Tiingo（美股主力）</h3>
+<ul>
+<li><code>tiingo_provider.py:3-6</code>：免费档 <b>1,000 req/天、50 req/时、500 symbols/月、1 GB 带宽/月</b>；<code>:26</code> 安全间隔 1.5s；<code>:32</code> 连续 3 次 429 中止本轮。</li>
+<li><code>us_etf.py:34</code>：日更只给 Tiingo 轮转 <b>50 只/天</b>，其余 yfinance/Sina 兜底。</li>
+<li><code>us_backfill.py:44-50</code>：慢速回填 <b>每轮 15 只、每轮只拉 90 天窗</b>，2 小时一跑；Redis 轮转偏移 + 连续 3 次失败进 7 天冷却。</li>
+<li class="crit">生产现状：容器内 TIINGO_API_KEY 为空值 → us_historical_backfill 近 3 天失败 144 次，us_daily_etl 6 败 1 成，全靠 yfinance 从云 IP 间歇成功。美股链路带病单点运行。</li>
+</ul>
+
+<h3>yfinance / FMP / Finnhub / 免费源</h3>
+<ul>
+<li><code>yfinance_provider.py:6,24,26</code>：~2,000 req/时（非官方）、_SAFE_DELAY=2.0s、批 20；云服务器 IP 被重点限流（us_backfill.py:25-26），ECS 上不可靠。</li>
+<li><code>us_stock_discovery.py:23-24</code>：宇宙 = FMP 标普 500 成分，受 FMP 免费档 250 req/天约束；69 只 ETF 来自 Finnhub 硬编码清单。</li>
+<li>Binance klines / akshare：无鉴权无配额，但 akshare 无 SLA、接口随上游漂移（历史事故多次）。</li>
+</ul>
+
+<h3>既有回填基建（可直接复用）</h3>
+<table>
+<thead><tr><th>工具</th><th>位置</th><th>能力</th></tr></thead>
+<tbody>
+<tr><td>backfill_a_stock_2026.py</td><td>app/scripts/</td><td><b>bars / fundamental / financials 三模式</b>；bars 与 fundamental 均 1 API 调用/日，专为积分档设计，支持 dry-run 与日期区间</td></tr>
+<tr><td>backfill_a_share_adj_factor.py</td><td>app/scripts/</td><td>按股拉 Tushare 全史复权因子；<b>已挂周调度，Redis 锁 4h</b>（scheduler.py:107,115,556）</td></tr>
+<tr><td>backfill_us_deep_history.py</td><td>app/scripts/</td><td>美股深史 Plan C（2020→今）：core 33 走 Tiingo、非 core 走 yfinance 批 5，Redis offset 可续跑</td></tr>
+<tr><td>chunked_recalc_a_share_indicators.py</td><td>scripts/</td><td>A股指标分块重算，<b>磁盘 checkpoint 断点续跑</b>（防 OOM）</td></tr>
+<tr><td>backfill_indicators_full_history.py / recalculate_scores.py</td><td>scripts/</td><td>全历史指标补算 / 按日期重算评分（--date、--dry-run）</td></tr>
+<tr><td>backfill_futures_history.py 等</td><td>scripts/</td><td>期货（脚本可 1 万天）/ 全球指数 10y / 大盘资金流 / update_daily_data.py 增量追平全链 / backfill_us_priority.py 优先级清单 CSV</td></tr>
+</tbody></table>
+
+<h2>4. 分阶段补数方案</h2>
+<p>总原则：<b>闲暇驱动、限速保日终、免费源优先、探针先行</b>。全部在 backend 容器内 docker exec 跑脚本，避开 15:30-21:00 CST 日终高峰，首选 23:00-06:00 CST 与周末白天。</p>
+
+<h3>Phase 0 · 快赢与止血（本周闲暇，≈ 半天）</h3>
+<table>
+<thead><tr><th>项</th><th>目标</th><th>方法</th><th>预算</th><th>风险</th><th>验收</th></tr></thead>
+<tbody>
+<tr><td>0.1 配置 TIINGO_API_KEY</td><td>美股链路去单点</td><td>tiingo.com 免费注册 → 填 ECS .env（compose 用 deploy/aliyun-ecs/.env）→ 重建 backend</td><td>0 元、10 分钟</td><td>无</td><td>us_historical_backfill 恢复 success；us_daily_etl 连续 3 日 success</td></tr>
+<tr><td>0.2 修 cninfo_reports_daily</td><td>巨潮停更 6 周</td><td>与 news_cninfo_10m 同期故障一起排障（先查 etl_log.error_msg）</td><td>0</td><td>上游改版</td><td>表 max 日期追平 T-1</td></tr>
+<tr><td>0.3 CRYPTO 全史</td><td>25 币补到上线日</td><td>新增小脚本：Binance klines 按 startTime 分页 1,000 根/页 → upsert；随后 chunked 指标补算</td><td>≈100 次调用、0 元、&lt;1 小时</td><td>无</td><td>每币 min(trade_date) ≤ 上线后 7 天</td></tr>
+</tbody></table>
+
+<h3>Phase 1 · A股补深（第 1-2 个月，周末+夜间窗口）</h3>
+<p><b>目标</b>：442 万行 bar 缺口清零 + 估值补到 2015 + 复权因子对齐 + 指标/评分联动。</p>
+<ol>
+<li><b>ETF（989 只，≈94 万行）——零配额，先做</b>：akshare fund_etf_hist_em 按股全史，2,296 只 × ~1.5s ≈ <b>1 小时</b>，一个周末上午完事。风险：akshare 接口漂移，失败清单化重跑。</li>
+<li><b>STOCK（1,507 只，≈348 万行）——Tushare，探针定速</b>：先取 10 个历史交易日 dry-run→真跑→Tushare 控制台看积分单价。路线 A（积分便宜）：按日 bulk，~4,000 缺失交易日 × 0.5s ≈ 35 分钟纯时长，按每晚 200 日期限速 ≈ <b>1 个月夜窗</b>；路线 B（积分贵）：按股全史 1,507 次调用（周度 adj_factor 任务已证明该模式可用），每轮 100 只 ≈ 2-3 周。先老后新（762 只 &gt;10y 缺口优先）。</li>
+<li><b>估值</b>：--mode fundamental 同为 1 调用/日；先补 2023→今（≈1 GB），再延伸 2015→2022（2015→今全量 ≈ 1,200 万行 ≈ 2.7 GB）。</li>
+<li><b>复权因子对齐</b>：bar 补完后主动跑一次 backfill_a_share_adj_factor.py，否则旧段 qfq_close 口径错。</li>
+<li><b>指标重算</b>：chunked_recalc_a_share_indicators.py --batch-size 100 断点续跑，348 万新行拆 <b>2-3 个周末夜窗</b>。</li>
+<li><b>评分重算</b>：recalculate_scores.py 只重算最近 2 年（评分对当日全市场横截面敏感，远古评分价值低）。</li>
+</ol>
+<p>预算：Tushare 每晚新增调用 ≤ 200（探针后按实测定）；磁盘新增 ≈ 2.9 GB（bar+指标）+ 1-2.7 GB（估值），合计 &lt; 6 GB，32 GB 余量可承受。<br>
+风险对策：积分耗尽影响日终 → 夜窗限速 + 失败即停（provider 已识别权限/积分错误）；磁盘 → 跑前后 df -h 对账。<br>
+<b>验收</b>：首根bar ≤ list_date+30 的 A股标的数 ≈ 0；指标行数与 bar 同步；抽样 1994-96 年上市老股首行 = 上市周。</p>
+
+<h3>Phase 2 · 美股扩宇宙（第 2-4 个月，月度配额节奏）</h3>
+<p><b>目标</b>：宇宙 579 → 900+（+NASDAQ-100 与核心宽基），新标的深史到位。</p>
+<ol>
+<li>宇宙扩容：NASDAQ-100 清单（维基静态页或 FMP）复用 us_stock_discovery.py 的 upsert 路径注册。</li>
+<li>深史分层（依赖 Phase 0.1）：Tiingo 500 symbols/月 → 每月净增 ≤ 400 新标的（留 100 给日更轮转），+NASDAQ-100 一个季度内消化；backfill_us_deep_history.py 扩 tier 后跑非 core；可选本地 Mac 跑 yfinance 拉 CSV 入库绕开云 IP 限制。</li>
+<li>9 只零数据 + 8 只 2024+ 标的：确认冷却机制后手工触发一轮。</li>
+</ol>
+<p>预算：0 元；Tiingo symbols/月为唯一硬约束。风险：Tiingo 无 SLA、yfinance 改版、NASDAQ-100 季度调仓需发现任务跟进。<br>
+<b>验收</b>：etf_info US ≥ 680；新标的 min(bar) ≤ 2020-01-04；us_daily_etl 周成功率 ≥ 95%。</p>
+
+<h3>Phase 3 · 深度与广度延伸（长期低优先）</h3>
+<ul>
+<li>申万行业指数回填 2021→2024-11（akshare 免费）；ETF 资金流更早历史；sec_filings 扩公司覆盖（EDGAR 免费全量）。</li>
+<li>A股退市股 618 只：Phase 1 路线 A（按日 bulk）天然带回退市段数据，大部分顺带覆盖。</li>
+<li>美股再扩（罗素 1000 / 全 NASDAQ）——按 Tiingo 400/月节奏排队。</li>
+</ul>
+
+<h2>5. 三个最关键结论</h2>
+<div class="concl">
+<ol>
+<li><b>「一定范围、一定周期」的真身</b>：A股市主体已有上市日起深史（7,261 只、中位 1,619 行），真缺口是 <b>2,496 只的早期历史洞 ≈ 442 万行</b>（762 只缺 &gt;10 年）+ 估值表只有 11 个月；美股「深度好、范围窄」（中位 16.8 年，但宇宙仅 S&amp;P500+69 ETF）；CRYPTO 只有 4 个月。</li>
+<li><b>美股链路正在带病运行，修复只要 10 分钟</b>：TIINGO_API_KEY 为空 → 慢速回填近 3 天失败 144 次、日更 ETL 6 败 1 成全靠 yfinance 间歇续命。这是所有美股补数的前置条件（Phase 0.1）。</li>
+<li><b>补齐可行且大部分免费</b>：A股市 ETF/CRYPTO 全史走 akshare/Binance 零配额（ETF 全史 1 小时、CRYPTO 半小时）；A股市个股/估值有现成 1 调用/日基建（backfill_a_stock_2026.py），唯一硬约束是 Tushare 积分/天——<b>先跑 10 日期探针实测单价再定每晚批量</b>；磁盘总增量 &lt; 7 GB，在 32 GB 余量内。</li>
+</ol>
+</div>
+
+</body>
+</html>
