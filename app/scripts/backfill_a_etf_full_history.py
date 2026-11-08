@@ -102,6 +102,16 @@ def main() -> None:
         for i, (code, listing, _cur) in enumerate(todo, 1):
             try:
                 df = provider.fetch_daily_bars([code], listing, end)
+                if df is not None and not df.empty:
+                    # numeric(8,4) 上限 ±999.9999：货币 ETF 换手率可破千、
+                    # 上市首日涨跌幅可能越界——超界置 None（upsert 的 CASE
+                    # 逻辑保留已有值，不会被 NULL 覆盖）。
+                    for col in ("change_pct", "turnover_rate"):
+                        if col in df.columns:
+                            bad = df[col].abs() > 999.9999
+                            if bad.any():
+                                logger.info("%s: %s 有 %d 个越界值置空", code, col, int(bad.sum()))
+                            df.loc[bad, col] = None
                 if df is None or df.empty:
                     logger.warning("[%d/%d] %s: 空，跳过", i, len(todo), code)
                     failed.append(code)
