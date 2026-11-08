@@ -86,11 +86,10 @@ ENV PATH="/app/.venv/bin:${PATH}"
 COPY app/ ./app/
 COPY alembic/ ./alembic/
 COPY alembic.ini ./
-COPY scripts/docker-entrypoint.sh ./scripts/docker-entrypoint.sh
-# seed_users.py is invoked by deploy.sh inside the container to create the
-# initial admin — without this COPY a fresh production install failed after
-# the DB migration (deploy audit 2026-08-06).
-COPY scripts/seed_users.py ./scripts/seed_users.py
+# scripts/ 整目录入镜像（2026-11-08，pipeline audit P2 遗留）：运维/回填
+# 脚本此前只有 2 个进镜像，其余（create_user、回填系列等）容器内不存在，
+# 只能 docker cp 热投。整目录几 KB，无成本。
+COPY scripts/ ./scripts/
 RUN chmod +x /app/scripts/docker-entrypoint.sh
 
 # Copy frontend build output to a staging directory; it is copied into the
