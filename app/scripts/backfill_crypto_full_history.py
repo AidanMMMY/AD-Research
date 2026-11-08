@@ -13,14 +13,21 @@
 
 import argparse
 import logging
+import sys
 from datetime import date, timedelta
+from pathlib import Path
 
-from sqlalchemy import func
+# 本地跑：repo 根；容器跑：/app（与 scripts/create_user.py 同款引导）
+_THIS_DIR = Path(__file__).resolve().parent
+sys.path.insert(0, str(_THIS_DIR.parents[1]))
+sys.path.insert(0, "/app")
 
-from app.core.database import SessionLocal
-from app.core.redis_client import get_redis_client
-from app.data.pipelines.crypto_daily import CryptoDailyPipeline
-from app.models.etf import ETFInfo, InstrumentDailyBar
+from sqlalchemy import func  # noqa: E402
+
+from app.core.database import SessionLocal  # noqa: E402
+from app.core.redis_client import get_redis_client  # noqa: E402
+from app.data.pipelines.crypto_daily import CryptoDailyPipeline  # noqa: E402
+from app.models.etf import ETFInfo, InstrumentDailyBar  # noqa: E402
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 logger = logging.getLogger("backfill_crypto")
@@ -93,13 +100,29 @@ def main() -> None:
 
         end = date.today() - timedelta(days=1)
         failed = []
+        # provider.fetch_daily_bars 单次上限 1000 根且不分页（注释自述
+        # "够 4 年"）——9 年跨度必须按 ~3 年窗口分片拉取再拼接，否则
+        # 静默截断只剩前 1000 根。
+        WINDOW = timedelta(days=1000)
         for code, anchor, _cur in todo:
             try:
-                df = provider.fetch_daily_bars([code], anchor, end)
-                if df.empty:
+                frames = []
+                w_start = anchor
+                while w_start < end:
+                    w_end = min(w_start + WINDOW, end)
+                    chunk = provider.fetch_daily_bars([code], w_start, w_end)
+                    if chunk is not None and not chunk.empty:
+                        frames.append(chunk)
+                    w_start = w_end + timedelta(days=1)
+                if not frames:
                     logger.warning("%s: 返回空，跳过", code)
                     failed.append(code)
                     continue
+                import pandas as pd
+
+                df = pd.concat(frames, ignore_index=True).drop_duplicates(
+                    subset=["etf_code", "trade_date"]
+                )
                 n = pipe.load(df)
                 logger.info(
                     "%s: 写入 %d 行（%s ~ %s）",

@@ -20,7 +20,8 @@ import time
 from datetime import date, timedelta
 from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+sys.path.insert(0, "/app")  # Docker 容器惯例（与 crypto 回填脚本一致）
 
 from sqlalchemy import func  # noqa: E402
 
@@ -64,8 +65,10 @@ def main() -> None:
         )
 
         def is_etf(code: str) -> bool:
-            # A股 ETF 代码特征：沪 51/56/58、深 15/16 开头的 6 位数字
-            return len(code) == 6 and code[:2] in {"51", "56", "58", "15", "16"}
+            # A股 ETF 代码特征：沪 51/56/58、深 15/16 开头；库存格式带
+            # 交易所后缀（如 158000.SZ / 510300.SH），先剥后缀再判前缀。
+            pure = code.split(".")[0]
+            return len(pure) == 6 and pure[:2] in {"51", "56", "58", "15", "16"}
 
         todo, skipped = [], []
         for e in etfs:
@@ -75,7 +78,7 @@ def main() -> None:
             if args.codes and code not in args.codes:
                 continue
             cur = first_bar.get(code)
-            listing = e.listing_date
+            listing = e.list_date
             if listing is None:
                 listing = date(2004, 12, 30)  # 无上市日 → 尽量往前补
             if cur is not None and cur <= listing + timedelta(days=GAP_DAYS):
