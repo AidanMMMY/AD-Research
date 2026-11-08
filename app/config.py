@@ -101,6 +101,8 @@ class Settings(BaseSettings):
     # as research_report_summarize_daily_limit so the two endpoints
     # can't surprise each other in the future.
     news_translate_daily_limit: int = 50
+    # 情绪管线 LLM 并发（2026-11-08：20→3，429 风暴治理；env 可调）
+    sentiment_llm_concurrency: int = 3
 
     # M22-3 (2026-07-05) — ``/api/v1/news/health`` returns an
     # ``ai_cleanup_24h`` block with the share of fetched articles

@@ -110,23 +110,32 @@ class SentimentPipeline:
         llm: LLMService | None = None,
         cache: SentimentCache | None = None,
         monitor: LLMPipelineMonitor | None = None,
-        max_concurrency: int = 20,
+        max_concurrency: int | None = None,
         model: str | None = None,
     ) -> None:
         self.db = db
         self.llm = llm or LLMService(get_llm_provider(model=model))
         self.cache = cache or SentimentCache()
         self.monitor = monitor or LLMPipelineMonitor(cache=self.cache)
-        self.semaphore = asyncio.Semaphore(max_concurrency)
+        # 2026-11-08：并发默认从 20 降到 3 并支持 env 覆盖——20 并发对
+        # 免费/共享档 GLM 是 429 风暴（6 小时 9000+ 次 error 1302，还会
+        # 挤占每日研报的配额）。生产经 SENTIMENT_LLM_CONCURRENCY 调节。
+        from app.config import get_settings
+
+        _cfg = get_settings()
+        eff = (
+            max_concurrency
+            if max_concurrency is not None
+            else getattr(_cfg, "sentiment_llm_concurrency", 3)
+        )
+        self.semaphore = asyncio.Semaphore(eff)
+        # 连续 429 熔断：免费档速率被打满时立刻停批，别把配额烧在重试上
+        self._consecutive_rate_limits = 0
         # Cost-accounting tag: explicit override wins, else whatever the
         # provider resolved to. Unknown names fall back to the default
         # rates inside LLMPipelineMonitor, so this stays an approximation
         # only.
-        self.model = (
-            model
-            or getattr(self.llm.provider, "model", None)
-            or "minimax-m3"
-        )
+        self.model = model or getattr(self.llm.provider, "model", None) or "minimax-m3"
 
     # ------------------------------------------------------------------
     # JSON parsing
@@ -186,6 +195,17 @@ class SentimentPipeline:
                     temperature=temperature,
                 )
             except Exception as exc:
+                msg = str(exc)
+                if "429" in msg or "1302" in msg:
+                    self._consecutive_rate_limits += 1
+                    if self._consecutive_rate_limits >= 5:
+                        logger.error(
+                            "sentiment: 连续 %d 次速率限制，熔断本批（剩余项留待下轮）",
+                            self._consecutive_rate_limits,
+                        )
+                        raise DataProviderError("LLM rate-limit circuit breaker tripped") from exc
+                else:
+                    self._consecutive_rate_limits = 0
                 logger.error("LLM call failed: %s", exc)
                 raise DataProviderError(f"LLM call failed: {exc}") from exc
 
@@ -205,12 +225,14 @@ class SentimentPipeline:
         # so we estimate.  Rough heuristic: ~1 token / 1.5 Chinese chars
         p_tok = max(1, int(len(user_prompt) / 1.5))
         c_tok = max(1, int(len(result) / 1.5))
-        cost = self.monitor.record_call(
-            self.model, p_tok, c_tok
-        )
+        cost = self.monitor.record_call(self.model, p_tok, c_tok)
         logger.info(
             "LLM stage=%s elapsed=%dms p_tok=%d c_tok=%d cost=%.6f",
-            stage_name, elapsed_ms, p_tok, c_tok, cost,
+            stage_name,
+            elapsed_ms,
+            p_tok,
+            c_tok,
+            cost,
         )
         return parsed, p_tok, c_tok, cost
 
@@ -229,12 +251,7 @@ class SentimentPipeline:
 
         url = article.get("url", "") or ""
         title = article.get("title") or article.get("headline", "")
-        body = (
-            article.get("body")
-            or article.get("content")
-            or article.get("summary")
-            or ""
-        )
+        body = article.get("body") or article.get("content") or article.get("summary") or ""
         # Token governance: never feed more than the lede to the LLM.
         if len(body) > _PROMPT_BODY_MAX_CHARS:
             body = body[:_PROMPT_BODY_MAX_CHARS]
@@ -422,11 +439,7 @@ class SentimentPipeline:
     # Persistence helpers
     # ------------------------------------------------------------------
     def _hydrate(self, sentiment_id: int) -> dict:
-        rec = (
-            self.db.query(SentimentData)
-            .filter(SentimentData.id == sentiment_id)
-            .first()
-        )
+        rec = self.db.query(SentimentData).filter(SentimentData.id == sentiment_id).first()
         if not rec:
             return {"url": f"id:{sentiment_id}"}
         return {
