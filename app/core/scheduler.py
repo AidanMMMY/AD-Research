@@ -113,6 +113,11 @@ _ETL_JOB_MAX_RUNTIME_MINUTES: dict[str, int] = {
     "indicator_calc": 360,
     "signal_generation": 240,
     "a_share_adj_factor_backfill": 240,
+    # 2026-11-15：fund_flow_daily 正常 1-2 分钟跑完；幽灵挂死行要等
+    # 默认 120min 阈值才被清（生产实测多次 135min failed 残行）。30min
+    # 足够宽裕，让幽灵行快速出局不挡后续调度。
+    "fund_flow_daily": 30,
+    "market_fund_flow_daily": 15,
 }
 
 
