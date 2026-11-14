@@ -149,8 +149,10 @@ def main() -> None:
                             # bar 表 code 无后缀；净占比 = 净额/成交额×100
                             amt = amount_map.get(ts_code.split(".")[0]) if ts_code else None
 
-                            def _pct(v):
-                                return round(v / amt * 100, 2) if (v is not None and amt) else None
+                            def _pct(v, _amt=amt):
+                                return (
+                                    round(v / _amt * 100, 2) if (v is not None and _amt) else None
+                                )
 
                             recs.append(
                                 {
