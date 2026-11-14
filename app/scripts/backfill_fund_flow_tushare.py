@@ -198,6 +198,15 @@ def main() -> None:
                                     "leading_stock": row.get("lead_stock"),
                                 }
                             )
+                        # ind_dc 偶发同板块名多行（复权板块/重复推送）——
+                        # 批内重复键会撞 ON CONFLICT（同一批次不能两次影响
+                        # 同一行），按 (sector_name) 去重保首行。
+                        _seen = set()
+                        recs2 = [
+                            r
+                            for r in recs2
+                            if r["sector_name"] not in _seen and not _seen.add(r["sector_name"])
+                        ]
                         n2 = pipe._upsert_sector(recs2)
                         total_written += n2
                         logger.info("[%d/%d] %s 行业 +%d", i, len(todo), d, n2)
